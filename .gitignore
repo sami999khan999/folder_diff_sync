@@ -1,0 +1,94 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configurations and currently installed extensions.
+# This folder should be checked in to maintain consistency across the team.
+# .vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android related
+**/android/app/src/main/res/generated/
+**/android/gen/
+**/android/out/
+**/android/mipmap-*
+**/android/gradle/
+.gradle/
+**/android/local.properties
+**/android/**/build/
+**/android/app/app.iml
+**/android/app/src/main/res/values/strings.xml
+**/android/gradlew
+**/android/gradlew.bat
+
+# iOS/macOS related
+**/ios/Pods/
+**/ios/.generated/
+**/ios/DerivedData/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Runner.xcworkspace/xcuserdata/
+**/ios/Runner.xcodeproj/project.xcworkspace/
+**/ios/Runner.xcodeproj/xcuserdata/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.[mh]
+**/ios/Runner/GeneratedPluginRegistrant.swift
+**/ios/Runner/Runner-Bridging-Header.h
+**/ios/.last_build_id
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/Generated.xcconfig
+**/macos/Flutter/flutter_export_environment.sh
+**/macos/ServiceDefinitions.json
+**/macos/Runner/GeneratedPluginRegistrant.[mh]
+**/macos/Runner/GeneratedPluginRegistrant.swift
+**/macos/Runner/Runner-Bridging-Header.h
+**/macos/.last_build_id
+
+# Windows related
+**/windows/flutter/ephemeral/
+**/windows/flutter/generated_config.export.json
+
+# Linux related
+**/linux/flutter/ephemeral/
+
+# Symbolication related
+app.*.symbols
+app.*.map.json
+
+# Obfuscation related
+**/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+proguard-rules.pro
+-proguard.txt
+
+# Artifacts
+analysis_output.txt
+analysis.json
+analysis2.json
+analysis_final.json
