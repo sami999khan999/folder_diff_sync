@@ -9,6 +9,8 @@ class SyncState {
   final List<SyncItem> items;
   final bool isComparing;
   final bool isSyncing;
+  final bool isTwoWaySync;
+  final AppMode currentMode;
   final double syncProgress;
 
   SyncState({
@@ -17,6 +19,8 @@ class SyncState {
     this.items = const [],
     this.isComparing = false,
     this.isSyncing = false,
+    this.isTwoWaySync = false,
+    this.currentMode = AppMode.selection,
     this.syncProgress = 0.0,
   });
 
@@ -26,6 +30,8 @@ class SyncState {
     List<SyncItem>? items,
     bool? isComparing,
     bool? isSyncing,
+    bool? isTwoWaySync,
+    AppMode? currentMode,
     double? syncProgress,
   }) {
     return SyncState(
@@ -34,13 +40,22 @@ class SyncState {
       items: items ?? this.items,
       isComparing: isComparing ?? this.isComparing,
       isSyncing: isSyncing ?? this.isSyncing,
+      isTwoWaySync: isTwoWaySync ?? this.isTwoWaySync,
+      currentMode: currentMode ?? this.currentMode,
       syncProgress: syncProgress ?? this.syncProgress,
     );
   }
 }
 
-class SyncNotifier extends StateNotifier<SyncState> {
-  SyncNotifier() : super(SyncState());
+class SyncNotifier extends Notifier<SyncState> {
+  @override
+  SyncState build() {
+    return SyncState();
+  }
+
+  void setMode(AppMode mode) {
+    state = state.copyWith(currentMode: mode);
+  }
 
   void setSourcePath(String path) {
     state = state.copyWith(sourcePath: path);
@@ -52,6 +67,11 @@ class SyncNotifier extends StateNotifier<SyncState> {
     _compare();
   }
 
+  void toggleTwoWaySync(bool value) {
+    state = state.copyWith(isTwoWaySync: value);
+    _compare();
+  }
+
   Future<void> _compare() async {
     if (state.sourcePath == null || state.targetPath == null) return;
     
@@ -59,6 +79,7 @@ class SyncNotifier extends StateNotifier<SyncState> {
     final items = await FolderComparisonService.compareFolders(
       state.sourcePath!,
       state.targetPath!,
+      isTwoWaySync: state.isTwoWaySync,
     );
     state = state.copyWith(items: items, isComparing: false);
   }
@@ -102,6 +123,6 @@ class SyncNotifier extends StateNotifier<SyncState> {
   }
 }
 
-final syncProvider = StateNotifierProvider<SyncNotifier, SyncState>((ref) {
+final syncProvider = NotifierProvider<SyncNotifier, SyncState>(() {
   return SyncNotifier();
 });

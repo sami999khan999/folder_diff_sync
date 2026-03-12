@@ -92,3 +92,8 @@ analysis_output.txt
 analysis.json
 analysis2.json
 analysis_final.json
+
+# Environment Secrets
+.env
+.env.*
+!.env.example

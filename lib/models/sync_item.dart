@@ -12,6 +12,13 @@ enum SyncType {
   directory,
 }
 
+enum AppMode {
+  selection,
+  folderSync,
+  fileContentSync,
+  envSync,
+}
+
 class SyncItem {
   final String relativePath;
   final String sourcePath;

@@ -7,15 +7,19 @@ class SyncService {
     for (var item in items) {
       if (!item.isSelected) continue;
 
+      final bool isToSource = item.status == FileStatus.missingInSource;
+      final String fromPath = isToSource ? item.targetPath : item.sourcePath;
+      final String toPath = isToSource ? item.sourcePath : item.targetPath;
+
       if (item.type == SyncType.directory) {
-        await Directory(item.targetPath).create(recursive: true);
+        await Directory(toPath).create(recursive: true);
       } else {
         // Ensure parent directory exists
-        final parentDir = Directory(item.targetPath).parent;
+        final parentDir = Directory(toPath).parent;
         if (!await parentDir.exists()) {
           await parentDir.create(recursive: true);
         }
-        await File(item.sourcePath).copy(item.targetPath);
+        await File(fromPath).copy(toPath);
       }
       
       count++;
