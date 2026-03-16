@@ -40,7 +40,10 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
             _buildHeader(syncNotifier),
             const SizedBox(height: 32),
             // Source file picker
-            _buildSourcePicker(envState, envNotifier).animate().fadeIn(delay: 200.ms),
+            _buildSourcePicker(
+              envState,
+              envNotifier,
+            ).animate().fadeIn(delay: 200.ms),
             const SizedBox(height: 16),
             // Options row
             Row(
@@ -52,7 +55,10 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
             ).animate().fadeIn(delay: 300.ms),
             const SizedBox(height: 16),
             // Hide values toggle
-            _buildHideValuesToggle(envState, envNotifier).animate().fadeIn(delay: 400.ms),
+            _buildHideValuesToggle(
+              envState,
+              envNotifier,
+            ).animate().fadeIn(delay: 400.ms),
             const SizedBox(height: 24),
             // Preview
             Expanded(
@@ -65,7 +71,10 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
             ),
             // Footer
             if (envState.entries.isNotEmpty)
-              _buildFooter(envState, envNotifier).animate().fadeIn(delay: 600.ms),
+              _buildFooter(
+                envState,
+                envNotifier,
+              ).animate().fadeIn(delay: 600.ms),
           ],
         ),
       ),
@@ -90,7 +99,11 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
             color: Colors.greenAccent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(LucideIcons.fileCode, color: Colors.greenAccent, size: 20),
+          child: const Icon(
+            LucideIcons.fileCode,
+            color: Colors.greenAccent,
+            size: 20,
+          ),
         ),
         const SizedBox(width: 16),
         const Column(
@@ -98,7 +111,11 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
           children: [
             Text(
               'Env File Sync',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+              ),
             ),
             Text(
               'Generate env templates from existing files',
@@ -111,121 +128,124 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
   }
 
   Widget _buildSourcePicker(EnvSyncState state, EnvSyncNotifier notifier) {
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () async {
-          final result = await FilePicker.platform.pickFiles(
-            type: FileType.any,
-            dialogTitle: 'Select .env file',
-          );
-          if (result != null && result.files.single.path != null) {
-            notifier.setSourceFile(result.files.single.path!);
-          }
-        },
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(LucideIcons.filePlus, size: 20, color: Colors.blueAccent),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Source .env File',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      state.sourceFilePath ?? 'Click to select an env file...',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: state.sourceFilePath != null
-                            ? Colors.white.withValues(alpha: 0.9)
-                            : Colors.grey.withValues(alpha: 0.5),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
-                  ],
-                ),
-              ),
-              if (state.entries.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${state.entries.where((e) => e.key != null).length} vars',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.greenAccent),
-                  ),
-                ),
-            ],
+    return _HoverCard(
+      color: Colors.blueAccent,
+      onTap: () async {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.any,
+          dialogTitle: 'Select .env file',
+        );
+        if (result != null && result.files.single.path != null) {
+          notifier.setSourceFile(result.files.single.path!);
+        }
+      },
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.blueAccent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              LucideIcons.filePlus,
+              size: 20,
+              color: Colors.blueAccent,
+            ),
           ),
-        ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Source .env File',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  state.sourceFilePath ?? 'Click to select an env file...',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: state.sourceFilePath != null
+                        ? Colors.white.withValues(alpha: 0.9)
+                        : Colors.grey.withValues(alpha: 0.5),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+          if (state.entries.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${state.entries.where((e) => e.key != null).length} vars',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.greenAccent,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildOutputDirPicker(EnvSyncState state, EnvSyncNotifier notifier) {
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      child: InkWell(
-        onTap: () async {
-          final result = await FilePicker.platform.getDirectoryPath(
-            dialogTitle: 'Select output directory',
-          );
-          if (result != null) notifier.setOutputDirectory(result);
-        },
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.purpleAccent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(LucideIcons.folderOutput, size: 16, color: Colors.purpleAccent),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Output Directory', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                    const SizedBox(height: 4),
-                    Text(
-                      state.outputDirectory ?? 'Same as source (default)',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: state.outputDirectory != null
-                            ? Colors.white.withValues(alpha: 0.8)
-                            : Colors.grey.withValues(alpha: 0.5),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 1,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return _HoverCard(
+      color: Colors.purpleAccent,
+      onTap: () async {
+        final result = await FilePicker.platform.getDirectoryPath(
+          dialogTitle: 'Select output directory',
+        );
+        if (result != null) notifier.setOutputDirectory(result);
+      },
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.purpleAccent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              LucideIcons.folderOutput,
+              size: 16,
+              color: Colors.purpleAccent,
+            ),
           ),
-        ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Output Directory',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  state.outputDirectory ?? 'Same as source (default)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: state.outputDirectory != null
+                        ? Colors.white.withValues(alpha: 0.8)
+                        : Colors.grey.withValues(alpha: 0.5),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -241,7 +261,11 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
               color: Colors.amber.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(LucideIcons.fileEdit, size: 16, color: Colors.amber),
+            child: const Icon(
+              LucideIcons.fileEdit,
+              size: 16,
+              color: Colors.amber,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -251,7 +275,10 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
               style: const TextStyle(fontSize: 13),
               decoration: const InputDecoration(
                 labelText: 'Output File Name',
-                labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -267,8 +294,14 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: SwitchListTile(
-        title: const Text('Hide Values', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        subtitle: const Text('Output only variable names without values', style: TextStyle(fontSize: 12)),
+        title: const Text(
+          'Hide Values',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        subtitle: const Text(
+          'Output only variable names without values',
+          style: TextStyle(fontSize: 12),
+        ),
         value: state.hideValues,
         onChanged: (val) => notifier.toggleHideValues(val),
         secondary: Icon(
@@ -292,12 +325,19 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
               color: Colors.white.withValues(alpha: 0.02),
               shape: BoxShape.circle,
             ),
-            child: Icon(LucideIcons.fileCode, size: 48, color: Colors.grey.withValues(alpha: 0.2)),
+            child: Icon(
+              LucideIcons.fileCode,
+              size: 48,
+              color: Colors.grey.withValues(alpha: 0.2),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
             'Select an .env file to preview its contents',
-            style: TextStyle(color: Colors.grey.withValues(alpha: 0.5), fontSize: 16),
+            style: TextStyle(
+              color: Colors.grey.withValues(alpha: 0.5),
+              fontSize: 16,
+            ),
           ),
         ],
       ),
@@ -312,7 +352,10 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
           child: Row(
             children: [
-              const Text('Preview', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'Preview',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -327,7 +370,9 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    color: state.hideValues ? Colors.orangeAccent : Colors.greenAccent,
+                    color: state.hideValues
+                        ? Colors.orangeAccent
+                        : Colors.greenAccent,
                   ),
                 ),
               ),
@@ -375,10 +420,22 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
         text: TextSpan(
           style: const TextStyle(fontFamily: 'Consolas', fontSize: 13),
           children: [
-            TextSpan(text: entry.key, style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
-            TextSpan(text: '=', style: TextStyle(color: Colors.grey.withValues(alpha: 0.5))),
+            TextSpan(
+              text: entry.key,
+              style: const TextStyle(
+                color: Colors.blueAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextSpan(
+              text: '=',
+              style: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
+            ),
             if (!hideValues)
-              TextSpan(text: entry.value, style: const TextStyle(color: Colors.greenAccent)),
+              TextSpan(
+                text: entry.value,
+                style: const TextStyle(color: Colors.greenAccent),
+              ),
           ],
         ),
       ),
@@ -394,12 +451,19 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
             Expanded(
               child: Row(
                 children: [
-                  const Icon(LucideIcons.checkCircle, size: 16, color: Colors.greenAccent),
+                  const Icon(
+                    LucideIcons.checkCircle,
+                    size: 16,
+                    color: Colors.greenAccent,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Generated: ${state.generatedPath}',
-                      style: const TextStyle(color: Colors.greenAccent, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 12,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -421,16 +485,69 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
               backgroundColor: Colors.greenAccent.withValues(alpha: 0.8),
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               elevation: 0,
             ),
-            icon: Icon(state.isProcessing ? LucideIcons.loader : LucideIcons.download, size: 18),
+            icon: Icon(
+              state.isProcessing ? LucideIcons.loader : LucideIcons.download,
+              size: 18,
+            ),
             label: Text(
               state.isProcessing ? 'Generating...' : 'Generate File',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HoverCard extends StatefulWidget {
+  final Color color;
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _HoverCard({
+    required this.color,
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  State<_HoverCard> createState() => _HoverCardState();
+}
+
+class _HoverCardState extends State<_HoverCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(24),
+          hoverColor: Colors.transparent,
+          splashColor: widget.color.withValues(alpha: 0.1),
+          highlightColor: Colors.transparent,
+          child: AnimatedContainer(
+            duration: 200.ms,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? widget.color.withValues(alpha: 0.05)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }

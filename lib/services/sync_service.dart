@@ -2,7 +2,7 @@ import 'dart:io';
 import '../models/sync_item.dart';
 
 class SyncService {
-  static Future<void> syncItems(List<SyncItem> items, {Function(int, int)? onProgress}) async {
+  static Future<void> syncItems(List<SyncItem> items, {Function(int, int, String)? onProgress}) async {
     int count = 0;
     for (var item in items) {
       if (!item.isSelected) continue;
@@ -24,7 +24,7 @@ class SyncService {
       
       count++;
       if (onProgress != null) {
-        onProgress(count, items.length);
+        onProgress(count, items.length, item.relativePath);
       }
     }
   }

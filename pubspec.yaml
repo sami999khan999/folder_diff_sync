@@ -39,6 +39,7 @@ dependencies:
   flutter_riverpod: ^3.3.1
   lucide_icons: ^0.257.0
   flutter_animate: ^4.5.2
+  multi_split_view: ^3.6.1
 
 dev_dependencies:
   flutter_test:
@@ -104,3 +105,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+  fonts:
+    - family: Minecraft
+      fonts:
+        - asset: assets/Minecraft.ttf

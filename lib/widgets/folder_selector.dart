@@ -13,52 +13,53 @@ class FolderSelectorRow extends ConsumerWidget {
     final state = ref.watch(syncProvider);
     final notifier = ref.read(syncProvider.notifier);
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: FolderCard(
-            title: 'Source Folder',
-            path: state.sourcePath,
-            icon: LucideIcons.folderInput,
-            color: Colors.blueAccent,
-            onTap: () async {
-              String? result = await FilePicker.platform.getDirectoryPath();
-              if (result != null) notifier.setSourcePath(result);
-            },
+        FolderCard(
+          title: 'Source Folder',
+          path: state.sourcePath,
+          icon: LucideIcons.folderInput,
+          color: Colors.blueAccent,
+          onManualPath: (path) => notifier.setSourcePath(path),
+          onTap: () async {
+            String? result = await FilePicker.platform.getDirectoryPath();
+            if (result != null) notifier.setSourcePath(result);
+          },
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(LucideIcons.arrowDown, color: Colors.grey, size: 16),
           ),
         ),
-        const SizedBox(width: 16),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(LucideIcons.arrowRight, color: Colors.grey, size: 20),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: FolderCard(
-            title: 'Target Folder',
-            path: state.targetPath,
-            icon: LucideIcons.folderOutput,
-            color: Colors.purpleAccent,
-            onTap: () async {
-              String? result = await FilePicker.platform.getDirectoryPath();
-              if (result != null) notifier.setTargetPath(result);
-            },
-          ),
+        const SizedBox(height: 12),
+        FolderCard(
+          title: 'Target Folder',
+          path: state.targetPath,
+          icon: LucideIcons.folderOutput,
+          color: Colors.purpleAccent,
+          onManualPath: (path) => notifier.setTargetPath(path),
+          onTap: () async {
+            String? result = await FilePicker.platform.getDirectoryPath();
+            if (result != null) notifier.setTargetPath(result);
+          },
         ),
       ],
     );
   }
 }
 
-class FolderCard extends StatelessWidget {
+class FolderCard extends StatefulWidget {
   final String title;
   final String? path;
   final IconData icon;
   final Color color;
+  final Function(String) onManualPath;
   final VoidCallback onTap;
 
   const FolderCard({
@@ -67,55 +68,133 @@ class FolderCard extends StatelessWidget {
     this.path,
     required this.icon,
     required this.color,
+    required this.onManualPath,
     required this.onTap,
   });
+
+  @override
+  State<FolderCard> createState() => _FolderCardState();
+}
+
+class _FolderCardState extends State<FolderCard> {
+  late TextEditingController _controller;
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.path);
+  }
+
+  @override
+  void didUpdateWidget(FolderCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_isFocused && widget.path != oldWidget.path) {
+      _controller.text = widget.path ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
       padding: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, size: 20, color: color),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: widget.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(width: 16),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Text(
-                path ?? 'Select folder...',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: path != null ? Colors.white.withValues(alpha: 0.9) : Colors.grey.withValues(alpha: 0.5),
-                  overflow: TextOverflow.ellipsis,
+                  child: Icon(widget.icon, size: 16, color: widget.color),
                 ),
-                maxLines: 1,
-              ),
-            ],
+                const SizedBox(width: 12),
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Focus(
+                    onFocusChange: (focused) {
+                      setState(() => _isFocused = focused);
+                      if (!focused) {
+                        widget.onManualPath(_controller.text);
+                      }
+                    },
+                    child: TextField(
+                      controller: _controller,
+                      style: const TextStyle(fontSize: 13, color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Enter folder path...',
+                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: widget.color.withValues(alpha: 0.5)),
+                        ),
+                      ),
+                      onSubmitted: (val) {
+                        widget.onManualPath(val);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: widget.onTap,
+                    borderRadius: BorderRadius.circular(12),
+                    hoverColor: widget.color.withValues(alpha: 0.1),
+                    highlightColor: widget.color.withValues(alpha: 0.05),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: widget.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: widget.color.withValues(alpha: 0.3)),
+                      ),
+                      child: Icon(LucideIcons.folderSearch, size: 18, color: widget.color),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
