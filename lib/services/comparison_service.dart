@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:path/path.dart' as p;
 import '../models/sync_item.dart';
 
@@ -25,12 +26,14 @@ class FolderComparisonService {
       if (entity is File) {
         final targetFile = File(targetEntityPath);
         if (!await targetFile.exists()) {
+          final stat = await entity.stat();
           items.add(SyncItem(
             relativePath: relativePath,
             sourcePath: entity.path,
             targetPath: targetEntityPath,
             type: SyncType.file,
             status: FileStatus.missingInTarget,
+            fileSize: stat.size,
           ));
         } else {
           final sourceStat = await entity.stat();
@@ -42,6 +45,7 @@ class FolderComparisonService {
               targetPath: targetEntityPath,
               type: SyncType.file,
               status: FileStatus.different,
+              fileSize: sourceStat.size,
             ));
           } else {
             items.add(SyncItem(
@@ -50,6 +54,7 @@ class FolderComparisonService {
               targetPath: targetEntityPath,
               type: SyncType.file,
               status: FileStatus.identical,
+              fileSize: sourceStat.size,
               isSelected: false,
             ));
           }
@@ -85,12 +90,15 @@ class FolderComparisonService {
       final sourceEntityPath = p.join(sourcePath, relativePath);
 
       if (entity is File) {
+        int size = 0;
+        try { size = (await entity.stat()).size; } catch (_) {}
         items.add(SyncItem(
           relativePath: relativePath,
           sourcePath: sourceEntityPath,
           targetPath: entity.path,
           type: SyncType.file,
           status: FileStatus.missingInSource,
+          fileSize: size,
         ));
       } else if (entity is Directory) {
         items.add(SyncItem(
@@ -107,81 +115,190 @@ class FolderComparisonService {
   }
 
   /// Recursive comparison with progressive updates.
+  /// Uses a separate Isolate to stream results back in batches.
   static Future<void> compareFoldersProgressive(
       String sourcePath, String targetPath,
       {required Function(List<SyncItem> items) onBatch, bool isTwoWay = true}) async {
-    final sourceDir = Directory(sourcePath);
-    final targetDir = Directory(targetPath);
+    final receivePort = ReceivePort();
+    
+    final isolate = await Isolate.spawn(_scanIsolateEntry, {
+      'sendPort': receivePort.sendPort,
+      'sourcePath': sourcePath,
+      'targetPath': targetPath,
+      'isTwoWay': isTwoWay,
+    });
 
-    if (!await sourceDir.exists() || !await targetDir.exists()) {
-      return;
+    try {
+      await for (var message in receivePort) {
+        if (message is List<SyncItem>) {
+          onBatch(message);
+        } else if (message == 'done') {
+          break;
+        } else if (message is String && message.startsWith('error:')) {
+          break;
+        }
+      }
+    } finally {
+      receivePort.close();
+      isolate.kill();
     }
+  }
+
+  static void _scanIsolateEntry(Map<String, dynamic> args) async {
+    final SendPort sendPort = args['sendPort'];
+    final String sourcePath = args['sourcePath'];
+    final String targetPath = args['targetPath'];
+    final bool isTwoWay = args['isTwoWay'];
+
+    try {
+      final Set<String> processedRelativePaths = {};
+      
+      // 1. Scan Source
+      await _scanWork(
+        rootPath: sourcePath,
+        otherRootPath: targetPath,
+        isSourceScan: true,
+        sendPort: sendPort,
+        processedPaths: processedRelativePaths,
+      );
+
+      // 2. Scan Target for missing items (if Two-Way)
+      if (isTwoWay) {
+        await _scanWork(
+          rootPath: targetPath,
+          otherRootPath: sourcePath,
+          isSourceScan: false,
+          sendPort: sendPort,
+          processedPaths: processedRelativePaths,
+        );
+      }
+      
+      sendPort.send('done');
+    } catch (e) {
+      sendPort.send('error: $e');
+    }
+  }
+
+  static Future<void> _scanWork({
+    required String rootPath,
+    required String otherRootPath,
+    required bool isSourceScan,
+    required SendPort sendPort,
+    required Set<String> processedPaths,
+  }) async {
+    final dir = Directory(rootPath);
+    if (!dir.existsSync()) return;
 
     final List<SyncItem> currentBatch = [];
-    const int batchSize = 10; // Smaller batch size for more immediate updates
-    final Set<String> processedRelativePaths = {};
+    const int batchSize = 100;
 
-    void flush() {
-      if (currentBatch.isNotEmpty) {
-        onBatch(List.from(currentBatch));
-        currentBatch.clear();
-      }
-    }
+    // We use BFS/Manual recursion instead of recursive: true to catch errors per folder
+    final queue = <Directory>[dir];
 
-    // 1. Scan Source for items
-    try {
-      await for (var entity in sourceDir.list(recursive: true, followLinks: false)) {
-        final relativePath = p.relative(entity.path, from: sourcePath);
-        final targetEntityPath = p.join(targetPath, relativePath);
-        processedRelativePaths.add(relativePath);
-
-        if (entity is File) {
-          currentBatch.add(await _compareFileEntity(
-              entity, relativePath, targetEntityPath));
-        } else if (entity is Directory) {
-          currentBatch.add(await _compareDirEntity(
-              entity, relativePath, targetEntityPath));
-        }
-
-        if (currentBatch.length >= batchSize) flush();
-      }
-    } catch (_) {}
-
-    flush();
-
-    // 2. Scan Target for items missing in Source (if Two-Way)
-    if (isTwoWay) {
+    while (queue.isNotEmpty) {
+      final currentDir = queue.removeAt(0);
+      
       try {
-        await for (var entity in targetDir.list(recursive: true, followLinks: false)) {
-          final relativePath = p.relative(entity.path, from: targetPath);
-          if (processedRelativePaths.contains(relativePath)) continue;
-
-          final sourceEntityPath = p.join(sourcePath, relativePath);
-
-          if (entity is File) {
-            currentBatch.add(SyncItem(
-              relativePath: relativePath,
-              sourcePath: sourceEntityPath,
-              targetPath: entity.path,
-              type: SyncType.file,
-              status: FileStatus.missingInSource,
-            ));
-          } else if (entity is Directory) {
-            currentBatch.add(SyncItem(
-              relativePath: relativePath,
-              sourcePath: sourceEntityPath,
-              targetPath: entity.path,
-              type: SyncType.directory,
-              status: FileStatus.missingInSource,
-            ));
+        final List<FileSystemEntity> entities = currentDir.listSync(recursive: false);
+        for (final entity in entities) {
+          final relativePath = p.relative(entity.path, from: rootPath);
+          
+          if (!isSourceScan && processedPaths.contains(relativePath)) {
+            // If scanning target, skip if already processed in source scan
+            if (entity is Directory) queue.add(entity); // But still explore subdirs
+            continue;
           }
 
-          if (currentBatch.length >= batchSize) flush();
+          if (isSourceScan) processedPaths.add(relativePath);
+
+          final otherEntityPath = p.join(otherRootPath, relativePath);
+
+          if (entity is File) {
+            if (isSourceScan) {
+              final otherFile = File(otherEntityPath);
+              final stat = entity.statSync();
+              if (!otherFile.existsSync()) {
+                currentBatch.add(SyncItem(
+                  relativePath: relativePath,
+                  sourcePath: entity.path,
+                  targetPath: otherEntityPath,
+                  type: SyncType.file,
+                  status: FileStatus.missingInTarget,
+                  fileSize: stat.size,
+                ));
+              } else {
+                final targetStat = otherFile.statSync();
+                if (stat.size != targetStat.size) {
+                  currentBatch.add(SyncItem(
+                    relativePath: relativePath,
+                    sourcePath: entity.path,
+                    targetPath: otherEntityPath,
+                    type: SyncType.file,
+                    status: FileStatus.different,
+                    fileSize: stat.size,
+                  ));
+                } else {
+                  currentBatch.add(SyncItem(
+                    relativePath: relativePath,
+                    sourcePath: entity.path,
+                    targetPath: otherEntityPath,
+                    type: SyncType.file,
+                    status: FileStatus.identical,
+                    fileSize: stat.size,
+                    isSelected: false,
+                  ));
+                }
+              }
+            } else {
+              int size = 0;
+              try { size = entity.statSync().size; } catch (_) {}
+              currentBatch.add(SyncItem(
+                relativePath: relativePath,
+                sourcePath: otherEntityPath,
+                targetPath: entity.path,
+                type: SyncType.file,
+                status: FileStatus.missingInSource,
+                fileSize: size,
+              ));
+            }
+          } else if (entity is Directory) {
+            if (isSourceScan) {
+              final otherDir = Directory(otherEntityPath);
+              currentBatch.add(SyncItem(
+                relativePath: relativePath,
+                sourcePath: entity.path,
+                targetPath: otherEntityPath,
+                type: SyncType.directory,
+                status: otherDir.existsSync() ? FileStatus.identical : FileStatus.missingInTarget,
+                isSelected: false,
+              ));
+            } else {
+              currentBatch.add(SyncItem(
+                relativePath: relativePath,
+                sourcePath: otherEntityPath,
+                targetPath: entity.path,
+                type: SyncType.directory,
+                status: FileStatus.missingInSource,
+                isSelected: false,
+              ));
+            }
+            queue.add(entity);
+          }
+
+          if (currentBatch.length >= batchSize) {
+            sendPort.send(List<SyncItem>.from(currentBatch));
+            currentBatch.clear();
+          }
         }
-      } catch (_) {}
+      } catch (e) {
+        // Skip restricted / error folders
+      }
     }
 
-    flush();
+    if (currentBatch.isNotEmpty) {
+      sendPort.send(List<SyncItem>.from(currentBatch));
+      currentBatch.clear();
+    }
   }
 
   /// Shallow comparison — only scans up to [maxDepth] levels deep.
@@ -328,12 +445,15 @@ class FolderComparisonService {
             final otherEntityPath = p.join(otherRootPath, relativePath);
 
             if (entity is File) {
+              int size = 0;
+              try { size = entity.statSync().size; } catch (_) {}
               items.add(SyncItem(
                 relativePath: relativePath,
                 sourcePath: otherEntityPath,
                 targetPath: entity.path,
                 type: SyncType.file,
                 status: FileStatus.missingInSource,
+                fileSize: size,
               ));
             } else if (entity is Directory) {
               items.add(SyncItem(
@@ -357,12 +477,14 @@ class FolderComparisonService {
       File entity, String relativePath, String targetEntityPath) async {
     final targetFile = File(targetEntityPath);
     if (!await targetFile.exists()) {
+      final stat = await entity.stat();
       return SyncItem(
         relativePath: relativePath,
         sourcePath: entity.path,
         targetPath: targetEntityPath,
         type: SyncType.file,
         status: FileStatus.missingInTarget,
+        fileSize: stat.size,
       );
     }
     final sourceStat = await entity.stat();
@@ -374,6 +496,7 @@ class FolderComparisonService {
         targetPath: targetEntityPath,
         type: SyncType.file,
         status: FileStatus.different,
+        fileSize: sourceStat.size,
       );
     }
     return SyncItem(
@@ -382,6 +505,7 @@ class FolderComparisonService {
       targetPath: targetEntityPath,
       type: SyncType.file,
       status: FileStatus.identical,
+      fileSize: sourceStat.size,
       isSelected: false,
     );
   }

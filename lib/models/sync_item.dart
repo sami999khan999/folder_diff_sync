@@ -19,12 +19,19 @@ enum AppMode {
   envSync,
 }
 
+enum SidebarSortOrder {
+  name,
+  size,
+  status,
+}
+
 class SyncItem {
   final String relativePath;
   final String sourcePath;
   final String targetPath;
   final SyncType type;
   final FileStatus status;
+  final int fileSize; // Size in bytes (0 for directories)
   bool isSelected;
 
   SyncItem({
@@ -33,6 +40,7 @@ class SyncItem {
     required this.targetPath,
     required this.type,
     required this.status,
+    this.fileSize = 0,
     this.isSelected = true,
   });
 

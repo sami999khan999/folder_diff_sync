@@ -6,22 +6,24 @@ import '../services/comparison_service.dart';
 import '../services/sync_service.dart';
 
 class SyncTreeNode {
-  SyncItem? item; // Null for root, mutable for background sync relinking
+  SyncItem? item;
   final String name;
-  final String relativePath; // Full relative path from root
+  final String relativePath;
   final bool isDirectory;
   final List<SyncTreeNode> children;
+  final int depth;
   bool isExpanded;
   bool isSelected;
-  bool isLoaded; // Whether children have been loaded (for lazy loading)
-  bool isLoading; // Whether children are currently being loaded
-  int childLimit; // For pagination
+  bool isLoaded;
+  bool isLoading;
+  int childLimit;
 
   SyncTreeNode({
     this.item,
     required this.name,
     required this.relativePath,
     required this.isDirectory,
+    required this.depth,
     this.children = const [],
     this.isExpanded = false,
     this.isSelected = false,
@@ -30,7 +32,6 @@ class SyncTreeNode {
     this.childLimit = 100,
   });
 
-  // Calculate if this node or any of its children need sync
   bool get needsSync {
     if (item != null && item!.status != FileStatus.identical) return true;
     return children.any((child) => child.needsSync);
@@ -40,7 +41,6 @@ class SyncTreeNode {
 class SyncState {
   final String? sourcePath;
   final String? targetPath;
-  final List<SyncItem> items;
   final List<SyncTreeNode> treeNodes;
   final bool isComparing;
   final bool isSyncing;
@@ -48,15 +48,20 @@ class SyncState {
   final AppMode currentMode;
   final bool isBackgroundScanning;
   final int scannedItemsCount;
-  final List<SyncItem> selectedItems; // Prefiltered for sidebar and sync
-  final int sidebarItemLimit; // For infinite scrolling
+  final int selectedCount;
+  final int totalSelectedSize; // Total bytes of selected files
+  final int sidebarItemLimit;
   final double syncProgress;
   final String? syncingFileName;
+  final int syncedCount; // Files copied so far
+  final int syncTotalCount; // Total files to copy
+  final int syncedBytes; // Bytes copied so far
+  final int syncTotalBytes; // Total bytes to copy
+  final int itemsRevision;
 
   SyncState({
     this.sourcePath,
     this.targetPath,
-    this.items = const [],
     this.treeNodes = const [],
     this.isComparing = false,
     this.isSyncing = false,
@@ -64,16 +69,28 @@ class SyncState {
     this.currentMode = AppMode.selection,
     this.isBackgroundScanning = false,
     this.scannedItemsCount = 0,
-    this.selectedItems = const [],
+    this.selectedCount = 0,
+    this.totalSelectedSize = 0,
     this.sidebarItemLimit = 50,
     this.syncProgress = 0.0,
     this.syncingFileName,
+    this.syncedCount = 0,
+    this.syncTotalCount = 0,
+    this.syncedBytes = 0,
+    this.syncTotalBytes = 0,
+    this.sidebarSearchQuery = '',
+    this.sidebarSortOrder = SidebarSortOrder.name,
+    this.sidebarItems = const [],
+    this.itemsRevision = 0,
   });
+
+  final SidebarSortOrder sidebarSortOrder;
+  final String sidebarSearchQuery;
+  final List<SyncItem> sidebarItems;
 
   SyncState copyWith({
     String? sourcePath,
     String? targetPath,
-    List<SyncItem>? items,
     List<SyncTreeNode>? treeNodes,
     bool? isComparing,
     bool? isSyncing,
@@ -81,15 +98,23 @@ class SyncState {
     AppMode? currentMode,
     bool? isBackgroundScanning,
     int? scannedItemsCount,
-    List<SyncItem>? selectedItems,
+    int? selectedCount,
+    int? totalSelectedSize,
     int? sidebarItemLimit,
     double? syncProgress,
     String? syncingFileName,
+    int? syncedCount,
+    int? syncTotalCount,
+    int? syncedBytes,
+    int? syncTotalBytes,
+    String? sidebarSearchQuery,
+    SidebarSortOrder? sidebarSortOrder,
+    List<SyncItem>? sidebarItems,
+    int? itemsRevision,
   }) {
     return SyncState(
       sourcePath: sourcePath ?? this.sourcePath,
       targetPath: targetPath ?? this.targetPath,
-      items: items ?? this.items,
       treeNodes: treeNodes ?? this.treeNodes,
       isComparing: isComparing ?? this.isComparing,
       isSyncing: isSyncing ?? this.isSyncing,
@@ -97,18 +122,195 @@ class SyncState {
       currentMode: currentMode ?? this.currentMode,
       isBackgroundScanning: isBackgroundScanning ?? this.isBackgroundScanning,
       scannedItemsCount: scannedItemsCount ?? this.scannedItemsCount,
-      selectedItems: selectedItems ?? this.selectedItems,
+      selectedCount: selectedCount ?? this.selectedCount,
+      totalSelectedSize: totalSelectedSize ?? this.totalSelectedSize,
       sidebarItemLimit: sidebarItemLimit ?? this.sidebarItemLimit,
       syncProgress: syncProgress ?? this.syncProgress,
       syncingFileName: syncingFileName ?? this.syncingFileName,
+      syncedCount: syncedCount ?? this.syncedCount,
+      syncTotalCount: syncTotalCount ?? this.syncTotalCount,
+      syncedBytes: syncedBytes ?? this.syncedBytes,
+      syncTotalBytes: syncTotalBytes ?? this.syncTotalBytes,
+      sidebarSearchQuery: sidebarSearchQuery ?? this.sidebarSearchQuery,
+      sidebarSortOrder: sidebarSortOrder ?? this.sidebarSortOrder,
+      sidebarItems: sidebarItems ?? this.sidebarItems,
+      itemsRevision: itemsRevision ?? this.itemsRevision,
     );
   }
 }
 
 class SyncNotifier extends Notifier<SyncState> {
+  // ── Mutable internal storage (NOT in immutable state) ──
+  final List<SyncItem> _allItems = [];
+  final Set<String> _scannedPaths = {};
+  // Persistent hierarchical tree for O(1) updates and instant expansion
+  final List<SyncTreeNode> _rootNodes = [];
+  final Map<String, SyncTreeNode> _nodesMap = {};
+
+  // For selection inheritance during background scan
+  final Set<String> _selectedPrefixes = {};
+
   @override
   SyncState build() {
     return SyncState();
+  }
+
+  // ── Public accessors for widgets that need the items list ──
+  List<SyncItem> get allItems => _allItems;
+
+  void setSidebarSearchQuery(String query) {
+    state = state.copyWith(sidebarSearchQuery: query);
+    _rebuildSidebarCache();
+  }
+
+  void setSidebarSortOrder(SidebarSortOrder order) {
+    state = state.copyWith(sidebarSortOrder: order);
+    _rebuildSidebarCache();
+  }
+
+  void _rebuildSidebarCache() {
+    final query = state.sidebarSearchQuery.toLowerCase();
+    
+    // O(N) but only happens when search/select/scan changes, not every frame
+    final filtered = _allItems.where((item) {
+      final isSelected = item.isSelected;
+      if (query.isEmpty) return isSelected;
+      
+      final matchesSearch = item.relativePath.toLowerCase().contains(query);
+      return matchesSearch; // Show all matches during search as per previous "Add/Remove" requirement
+    }).toList();
+
+    // Apply Sorting
+    switch (state.sidebarSortOrder) {
+      case SidebarSortOrder.name:
+        filtered.sort((a, b) => a.relativePath.compareTo(b.relativePath));
+        break;
+      case SidebarSortOrder.size:
+        filtered.sort((a, b) => b.fileSize.compareTo(a.fileSize));
+        break;
+      case SidebarSortOrder.status:
+        filtered.sort((a, b) => a.status.index.compareTo(b.status.index));
+        break;
+    }
+
+    state = state.copyWith(
+      sidebarItems: filtered,
+      itemsRevision: state.itemsRevision + 1,
+    );
+  }
+
+  void toggleItemSelectionByPath(String relativePath, bool selected) {
+    final node = _nodesMap[relativePath];
+    if (node != null) {
+      // Use existing recursive selection logic
+      toggleNodeSelection(node, selected);
+    } else {
+      final prefix = '$relativePath${Platform.pathSeparator}';
+      for (final item in _allItems) {
+        if (item.relativePath == relativePath || item.relativePath.startsWith(prefix)) {
+          item.isSelected = selected;
+        }
+      }
+      
+      if (selected) {
+        _selectedPrefixes.add(relativePath);
+      } else {
+        _selectedPrefixes.removeWhere((p) => p == relativePath || p.startsWith(prefix));
+      }
+
+      state = state.copyWith(
+        selectedCount: _allItems.where((e) => e.isSelected).length,
+        totalSelectedSize: _allItems.where((e) => e.isSelected).fold<int>(0, (sum, item) => sum + (item.fileSize)),
+        itemsRevision: state.itemsRevision + 1,
+      );
+      _rebuildSidebarCache();
+    }
+  }
+
+  void toggleAll(bool selected) {
+    final query = state.sidebarSearchQuery.toLowerCase();
+    int totalCount = state.selectedCount;
+    int totalSize = state.totalSelectedSize;
+
+    if (query.isEmpty) {
+      // 1. Update all items in the flat list
+      for (var item in _allItems) {
+        item.isSelected = selected;
+      }
+
+      // 2. Clear prefixes if deselecting, or mark root if selecting
+      if (selected) {
+        _selectedPrefixes.clear();
+        _selectedPrefixes.add('');
+        totalCount = _allItems.length;
+        totalSize = _allItems.fold(0, (sum, item) => sum + item.fileSize);
+      } else {
+        _selectedPrefixes.clear();
+        totalCount = 0;
+        totalSize = 0;
+      }
+
+      // 3. Update the persistent tree nodes to keep UI in sync
+      _updateSelectionRecursive(_rootNodes, selected);
+    } else {
+      // 1. Only affect items matching the search
+      final filtered = _allItems.where((item) => 
+        item.relativePath.toLowerCase().contains(query)).toList();
+      
+      for (var item in filtered) {
+        if (item.isSelected != selected) {
+          item.isSelected = selected;
+          totalCount += selected ? 1 : -1;
+          totalSize += selected ? item.fileSize : -item.fileSize;
+        }
+        
+        final node = _nodesMap[item.relativePath];
+        if (node != null) {
+          _setSelectionRecursive(node, selected);
+          // If it's a folder, we need to update children in the flat list too
+          if (item.type == SyncType.directory) {
+            final prefix = '${item.relativePath}${Platform.pathSeparator}';
+            for (final child in _allItems) {
+              if (child.relativePath.startsWith(prefix)) {
+                if (child.isSelected != selected) {
+                  child.isSelected = selected;
+                  totalCount += selected ? 1 : -1;
+                  totalSize += selected ? child.fileSize : -child.fileSize;
+                }
+              }
+            }
+          }
+        }
+        
+        if (selected) {
+          _selectedPrefixes.add(item.relativePath);
+        } else {
+          final prefix = '${item.relativePath}${Platform.pathSeparator}';
+          _selectedPrefixes.removeWhere((p) => p == item.relativePath || p.startsWith(prefix));
+        }
+      }
+      
+      // Update parent states in the tree
+      _updateParentSelection(_rootNodes);
+    }
+
+    state = state.copyWith(
+      selectedCount: totalCount,
+      totalSelectedSize: totalSize,
+    );
+    _rebuildSidebarCache();
+  }
+
+  void _updateSelectionRecursive(List<SyncTreeNode> nodes, bool selected) {
+    for (var node in nodes) {
+      node.isSelected = selected;
+      if (node.item != null) {
+        node.item!.isSelected = selected;
+      }
+      if (node.children.isNotEmpty) {
+        _updateSelectionRecursive(node.children, selected);
+      }
+    }
   }
 
   void setMode(AppMode mode) {
@@ -126,34 +328,105 @@ class SyncNotifier extends Notifier<SyncState> {
   }
 
   void toggleTwoWaySync(bool value) {
-    // 1. Save current expansion state
     final expandedPaths = _getExpandedPaths(state.treeNodes);
 
-    // 2. Update selection in the items list
-    final updatedItems = state.items.map((item) {
+    for (var item in _allItems) {
       if (item.status == FileStatus.missingInSource) {
         item.isSelected = value;
       }
-      return item;
-    }).toList();
+    }
 
-    // 3. Update state
     state = state.copyWith(
       isTwoWaySync: value,
-      items: updatedItems,
-      selectedItems: updatedItems.where((e) => e.isSelected).toList(),
-      sidebarItemLimit: 50, // Reset limit when selection significantly changes
+      selectedCount: _allItems.where((e) => e.isSelected).length,
+      sidebarItemLimit: 50,
+      itemsRevision: state.itemsRevision + 1,
     );
 
-    // 4. Rebuild tree and restore expansion
-    final newTree = _buildTree(updatedItems, isTwoWaySync: value);
-    _restoreExpansionState(newTree, expandedPaths);
-    
-    state = state.copyWith(treeNodes: newTree);
+    _rebuildTreeFromAllItems(expandedPaths);
 
-    // 5. If turning two-way scan ON, trigger a fresh comparison to discover destination items
     if (value) {
       _compare();
+    }
+  }
+
+  void _rebuildTreeFromAllItems(Set<String> expandedPaths) {
+    // With persistent _rootNodes, expansion state is already in the nodes.
+    // We just need to re-flatten the tree to update the visible list.
+    final flatNodes = <SyncTreeNode>[];
+    _flattenTreeRecursive(_rootNodes, flatNodes);
+    state = state.copyWith(treeNodes: flatNodes);
+  }
+
+  /// Incrementally adds an item to the persistent hierarchical tree.
+  /// This is O(depth) instead of O(N log N) rebuilding.
+  void _upsertItemToPersistentTree(SyncItem item) {
+    final effectiveTwoWay = state.isTwoWaySync;
+    if (!effectiveTwoWay && item.status == FileStatus.missingInSource) return;
+
+    final parts = item.relativePath.split(Platform.pathSeparator);
+    String currentPath = "";
+
+    for (int i = 0; i < parts.length; i++) {
+      final part = parts[i];
+      final isLast = i == parts.length - 1;
+      final parentPath = currentPath;
+      currentPath = currentPath.isEmpty ? part : p.join(currentPath, part);
+
+      if (!_nodesMap.containsKey(currentPath)) {
+        final isDir = !isLast || item.type == SyncType.directory;
+        final node = SyncTreeNode(
+          item: isLast ? item : null,
+          name: part,
+          relativePath: currentPath,
+          isDirectory: isDir,
+          depth: i,
+          children: [],
+          isSelected: isLast ? item.isSelected : false,
+          isLoaded: isDir && isLast ? false : true,
+        );
+        _nodesMap[currentPath] = node;
+
+        if (parentPath.isEmpty) {
+          _rootNodes.add(node);
+        } else {
+          final parent = _nodesMap[parentPath];
+          if (parent != null) {
+            parent.children.add(node);
+          }
+        }
+      } else if (isLast) {
+        final existing = _nodesMap[currentPath]!;
+        existing.item = item;
+        existing.isSelected = item.isSelected;
+      }
+    }
+  }
+
+  void _flattenTreeRecursive(
+    List<SyncTreeNode> nodes,
+    List<SyncTreeNode> result,
+  ) {
+    for (final node in nodes) {
+      result.add(node);
+      if (node.isExpanded && node.isDirectory) {
+        final children = node.children;
+        final limit = node.childLimit;
+        for (int i = 0; i < children.length && i < limit; i++) {
+          _flattenTreeRecursiveNode(children[i], result);
+        }
+      }
+    }
+  }
+
+  void _flattenTreeRecursiveNode(SyncTreeNode node, List<SyncTreeNode> result) {
+    result.add(node);
+    if (node.isExpanded && node.isDirectory) {
+      final children = node.children;
+      final limit = node.childLimit;
+      for (int i = 0; i < children.length && i < limit; i++) {
+        _flattenTreeRecursiveNode(children[i], result);
+      }
     }
   }
 
@@ -165,14 +438,21 @@ class SyncNotifier extends Notifier<SyncState> {
 
   Future<void> _compare() async {
     if (state.sourcePath == null || state.targetPath == null) return;
-    
+
+    _allItems.clear();
+    _scannedPaths.clear();
+    _selectedPrefixes.clear();
+    _rootNodes.clear();
+    _nodesMap.clear();
+
     state = state.copyWith(
-      isComparing: true, 
-      items: [], 
+      isComparing: true,
       scannedItemsCount: 0,
+      selectedCount: 0,
       treeNodes: [],
+      itemsRevision: state.itemsRevision + 1,
     );
-    
+
     // 1. Shallow scan for immediate 1-layer display
     final shallowItems = await FolderComparisonService.compareFoldersShallow(
       state.sourcePath!,
@@ -180,182 +460,144 @@ class SyncNotifier extends Notifier<SyncState> {
       maxDepth: _initialDepth,
       isTwoWay: state.isTwoWaySync,
     );
-    
-    final treeNodes = _buildTree(shallowItems, maxDepth: _initialDepth);
+
+    _allItems.addAll(shallowItems);
+    _scannedPaths.addAll(shallowItems.map((e) => e.relativePath));
+
+    for (final item in shallowItems) {
+      _upsertItemToPersistentTree(item);
+    }
+
+    final flatNodes = <SyncTreeNode>[];
+    _flattenTreeRecursive(_rootNodes, flatNodes);
+
     state = state.copyWith(
-      items: shallowItems, 
-      treeNodes: treeNodes,
+      treeNodes: flatNodes,
       isComparing: false,
-      scannedItemsCount: shallowItems.length,
-      selectedItems: shallowItems.where((e) => e.isSelected).toList(),
+      scannedItemsCount: _allItems.length,
+      selectedCount: _allItems.where((e) => e.isSelected).length,
+      itemsRevision: state.itemsRevision + 1,
     );
 
-    // 2. Progressive background scan for sidebar
-    _runBackgroundFullScanProgressive(state.sourcePath!, state.targetPath!, isTwoWay: state.isTwoWaySync);
+    // 2. Progressive background scan
+    _runBackgroundFullScanProgressive(
+      state.sourcePath!,
+      state.targetPath!,
+      isTwoWay: state.isTwoWaySync,
+    );
   }
 
-  Future<void> _runBackgroundFullScanProgressive(String source, String target, {bool isTwoWay = true}) async {
+  Future<void> _runBackgroundFullScanProgressive(
+    String sourcePath,
+    String targetPath, {
+    bool isTwoWay = true,
+  }) async {
     state = state.copyWith(isBackgroundScanning: true);
-    
+
+    int pendingNewCount = 0;
+    int pendingSelectedCount = 0;
+    int pendingSelectedSize = 0;
     DateTime lastUpdateTime = DateTime.now();
-    List<SyncItem> pendingItems = [];
 
     await FolderComparisonService.compareFoldersProgressive(
-      source,
-      target,
+      sourcePath,
+      targetPath,
       isTwoWay: isTwoWay,
-      onBatch: (batch) {
-        pendingItems.addAll(batch);
+      onBatch: (batch) async {
+        for (final item in batch) {
+          if (_scannedPaths.contains(item.relativePath)) continue;
+          _scannedPaths.add(item.relativePath);
 
+          // Selection inheritance: check if any ancestor is selected
+          if (_shouldAutoSelect(item.relativePath)) {
+            item.isSelected = true;
+          }
+
+          _allItems.add(item);
+          _upsertItemToPersistentTree(item);
+          pendingNewCount++;
+          if (item.isSelected) {
+            pendingSelectedCount++;
+            pendingSelectedSize += item.fileSize;
+          }
+        }
+
+        // Throttle state updates to every 1.5 seconds — only update COUNTER, not tree
         final now = DateTime.now();
-        // Update UI at most every 800ms to prevent lag with many files
-        if (now.difference(lastUpdateTime) > const Duration(milliseconds: 800)) {
-          final existingPaths = state.items.map((e) => e.relativePath).toSet();
-          final newItems = pendingItems.where((e) => !existingPaths.contains(e.relativePath)).toList();
-          pendingItems.clear();
-
-          if (newItems.isNotEmpty) {
-            final expandedPaths = _getExpandedPaths(state.treeNodes);
-            final updatedItems = [...state.items, ...newItems];
-
-            final newTree = _buildTree(updatedItems);
-            _restoreExpansionState(newTree, expandedPaths);
-
+        if (now.difference(lastUpdateTime) > const Duration(milliseconds: 1500)) {
+          if (pendingNewCount > 0) {
             state = state.copyWith(
-              items: updatedItems,
-              scannedItemsCount: updatedItems.length,
-              treeNodes: newTree,
-              selectedItems: updatedItems.where((e) => e.isSelected).toList(),
+              scannedItemsCount: state.scannedItemsCount + pendingNewCount,
+              selectedCount: state.selectedCount + pendingSelectedCount,
+              totalSelectedSize: state.totalSelectedSize + pendingSelectedSize,
+              itemsRevision: state.itemsRevision + 1,
             );
+            _rebuildSidebarCache();
+            pendingNewCount = 0;
+            pendingSelectedCount = 0;
+            pendingSelectedSize = 0;
           }
           lastUpdateTime = now;
         }
       },
     );
 
-    // Final flush of any pending items
-    if (pendingItems.isNotEmpty) {
-      final existingPaths = state.items.map((e) => e.relativePath).toSet();
-      final newItems = pendingItems.where((e) => !existingPaths.contains(e.relativePath)).toList();
-      if (newItems.isNotEmpty) {
-        final expandedPaths = _getExpandedPaths(state.treeNodes);
-        final updatedItems = [...state.items, ...newItems];
-        final newTree = _buildTree(updatedItems);
-        _restoreExpansionState(newTree, expandedPaths);
-        state = state.copyWith(
-          items: updatedItems,
-          scannedItemsCount: updatedItems.length,
-          treeNodes: newTree,
-          selectedItems: updatedItems.where((e) => e.isSelected).toList(),
-        );
-      }
+    // Final update
+    if (pendingNewCount > 0) {
+      state = state.copyWith(
+        scannedItemsCount: state.scannedItemsCount + pendingNewCount,
+        selectedCount: state.selectedCount + pendingSelectedCount,
+        totalSelectedSize: state.totalSelectedSize + pendingSelectedSize,
+        itemsRevision: state.itemsRevision + 1,
+      );
+      _rebuildSidebarCache();
     }
 
     state = state.copyWith(isBackgroundScanning: false);
   }
 
-  List<SyncTreeNode> _buildTree(List<SyncItem> items, {int? maxDepth, bool? isTwoWaySync}) {
-    final effectiveTwoWay = isTwoWaySync ?? state.isTwoWaySync;
-    final Map<String, SyncTreeNode> nodes = {};
-    final List<SyncTreeNode> rootNodes = [];
-
-    // Filter items based on two-way sync setting
-    final filteredItems = items.where((item) {
-      if (effectiveTwoWay) return true;
-      return item.status != FileStatus.missingInSource;
-    }).toList();
-
-    // Sort items by depth to ensure parent directories are created first
-    final sortedItems = filteredItems
-      ..sort((a, b) => a.relativePath.split(Platform.pathSeparator).length
-          .compareTo(b.relativePath.split(Platform.pathSeparator).length));
-
-    for (var item in sortedItems) {
-      final parts = item.relativePath.split(Platform.pathSeparator);
-      String currentPath = "";
-      
-      for (int i = 0; i < parts.length; i++) {
-        final part = parts[i];
-        final isLast = i == parts.length - 1;
-        final parentPath = currentPath;
-        currentPath = currentPath.isEmpty ? part : p.join(currentPath, part);
-
-        // Determine depth of this path segment (0-indexed)
-        final depth = i + 1;
-        final isAtBoundary = maxDepth != null && depth >= maxDepth;
-
-        if (!nodes.containsKey(currentPath)) {
-          final isDir = !isLast || item.type == SyncType.directory;
-          final node = SyncTreeNode(
-            item: isLast ? item : null,
-            name: part,
-            relativePath: currentPath,
-            isDirectory: isDir,
-            children: [],
-            // Respect the item's own selection property if it's the leaf node
-            isSelected: isLast ? item.isSelected : false,
-            // Mark directory nodes at the depth boundary as not loaded
-            isLoaded: isDir && isLast && isAtBoundary ? false : true,
-            childLimit: 100,
-          );
-          nodes[currentPath] = node;
-
-          if (parentPath.isEmpty) {
-            rootNodes.add(node);
-          } else {
-            nodes[parentPath]!.children.add(node);
-          }
-        } else if (isLast) {
-          final existing = nodes[currentPath]!;
-          nodes[currentPath] = SyncTreeNode(
-            item: item,
-            name: part,
-            relativePath: currentPath,
-            isDirectory: existing.isDirectory,
-            children: existing.children,
-            isSelected: item.isSelected, // Respect item's selection
-            isLoaded: existing.isLoaded,
-          );
-        }
+  bool _shouldAutoSelect(String relativePath) {
+    // Check if any prefix in _selectedPrefixes matches this path
+    for (final prefix in _selectedPrefixes) {
+      if (relativePath.startsWith('$prefix${Platform.pathSeparator}')) {
+        return true;
       }
     }
-    _updateParentSelection(rootNodes);
-    return rootNodes;
+    return false;
   }
+
+
 
   void toggleNodeExpansion(SyncTreeNode node) {
     node.isExpanded = !node.isExpanded;
-    state = state.copyWith(treeNodes: List.from(state.treeNodes));
+    final expandedPaths = _getExpandedPaths(state.treeNodes);
+    _rebuildTreeFromAllItems(expandedPaths);
   }
 
   /// Expand a directory node, lazily loading its children if needed.
   Future<void> expandAndLoadNode(SyncTreeNode node) async {
     if (!node.isDirectory) return;
 
-    // If already loaded, just toggle expansion
     if (node.isLoaded) {
       toggleNodeExpansion(node);
       return;
     }
 
-    // Not loaded yet — check if background full scan already found these items
-    final childrenFromBackground = state.items.where((item) {
+    // Check if background scan already found children
+    final childrenFromBackground = _allItems.where((item) {
       final parentPath = p.dirname(item.relativePath);
-      return parentPath == node.relativePath || (node.relativePath == "." && !item.relativePath.contains(Platform.pathSeparator));
+      return parentPath == node.relativePath;
     }).toList();
-
-    // Special case for root level relative paths if node.relativePath is just a folder name with no depth
-    // Actually p.dirname handles it. If relativePath is "dir1", dirname(dir1/file) is "dir1".
 
     if (childrenFromBackground.isNotEmpty) {
       _populateNode(node, childrenFromBackground);
       node.isLoaded = true;
       node.isExpanded = true;
-      state = state.copyWith(treeNodes: List.from(state.treeNodes));
+      _rebuildTreeFromAllItems(_getExpandedPaths(state.treeNodes));
       return;
     }
 
-    // Fallback: fetch children manually if background scan hasn't reached them yet
+    // Fallback: fetch manually
     if (state.sourcePath == null || state.targetPath == null) return;
 
     node.isLoading = true;
@@ -370,22 +612,27 @@ class SyncNotifier extends Notifier<SyncState> {
         isTwoWay: state.isTwoWaySync,
       );
 
-      // Add newly discovered items to the main items list (deduplicated)
-      final existingPaths = state.items.map((e) => e.relativePath).toSet();
-      final newItems = childItems.where((e) => !existingPaths.contains(e.relativePath)).toList();
-      final updatedItems = List<SyncItem>.from(state.items)..addAll(newItems);
+      // Add new items to internal storage
+      for (final item in childItems) {
+        if (!_scannedPaths.contains(item.relativePath)) {
+          _scannedPaths.add(item.relativePath);
+          _allItems.add(item);
+        }
+      }
 
       _populateNode(node, childItems);
 
       node.isLoaded = true;
       node.isLoading = false;
-      _updateParentSelection(state.treeNodes);
 
       state = state.copyWith(
-        items: updatedItems,
-        treeNodes: List.from(state.treeNodes),
-        selectedItems: updatedItems.where((e) => e.isSelected).toList(),
+        scannedItemsCount: _allItems.length,
+        selectedCount: _allItems.where((e) => e.isSelected).length,
+        totalSelectedSize: _allItems.where((e) => e.isSelected).fold<int>(0, (sum, item) => sum + item.fileSize),
+        itemsRevision: state.itemsRevision + 1,
       );
+      _rebuildTreeFromAllItems(_getExpandedPaths(state.treeNodes));
+      _rebuildSidebarCache();
     } catch (e) {
       node.isLoading = false;
       state = state.copyWith(treeNodes: List.from(state.treeNodes));
@@ -395,86 +642,45 @@ class SyncNotifier extends Notifier<SyncState> {
   void _populateNode(SyncTreeNode node, List<SyncItem> childItems) {
     node.children.clear();
     for (var item in childItems) {
-      // Filter out items missing in source if two-way sync is off
       if (!state.isTwoWaySync && item.status == FileStatus.missingInSource) {
         continue;
       }
 
       final name = item.relativePath.split(Platform.pathSeparator).last;
-      
-      // Determine if this item is a direct child
+
       final parentPath = p.dirname(item.relativePath);
-      if (parentPath != node.relativePath && !(node.relativePath == "." && !item.relativePath.contains(Platform.pathSeparator))) {
-         // This item might be a grandchild found in state.items, skip it here
-         continue;
-      }
+      if (parentPath != node.relativePath) continue;
 
       final isSyncNeeded = state.isTwoWaySync
           ? item.status != FileStatus.identical
-          : (item.status == FileStatus.missingInTarget || item.status == FileStatus.different);
+          : (item.status == FileStatus.missingInTarget ||
+                item.status == FileStatus.different);
 
       final childNode = SyncTreeNode(
         item: item,
         name: name,
         relativePath: item.relativePath,
         isDirectory: item.type == SyncType.directory,
+        depth: node.depth + 1,
         children: [],
         isSelected: isSyncNeeded,
-        // Child directories are also not loaded yet
         isLoaded: item.type == SyncType.directory ? false : true,
-        childLimit: 100,
       );
       node.children.add(childNode);
     }
   }
 
   void toggleItemSelection(int index) {
-    if (index >= 0 && index < state.items.length) {
-      final item = state.items[index];
+    if (index >= 0 && index < _allItems.length) {
+      final item = _allItems[index];
       item.isSelected = !item.isSelected;
-      
-      _updateTreeFromItems();
-      
+
       state = state.copyWith(
-        items: List.from(state.items),
-        treeNodes: List.from(state.treeNodes),
-        selectedItems: state.items.where((e) => e.isSelected).toList(),
+        selectedCount: _allItems.where((e) => e.isSelected).length,
+        totalSelectedSize: _allItems.where((e) => e.isSelected).fold<int>(0, (sum, item) => sum + item.fileSize),
+        itemsRevision: state.itemsRevision + 1,
       );
-    }
-  }
-
-  void _updateTreeFromItems() {
-    // If visibility changed (e.g. background scan found items that should be visible), 
-    // it's safest to rebuild the tree while preserving expansion state.
-    // However, for performance, we'll just update existing nodes and then 
-    // re-run _buildTree if the item count changed significantly? 
-    // No, let's just make it simpler: update selection.
-    
-    // To handle new items appearing in already expanded folders, we should 
-    // ideally check if any new items belong to loaded folders.
-    
-    // For now, let's just fix the selection sync.
-    final Map<String, SyncItem> itemMap = {
-      for (var item in state.items) item.relativePath: item
-    };
-
-    // Before updating, let's see if we need to add new nodes.
-    // If the number of items changed, a full rebuild might be needed 
-    // if those items should be visible in the current tree.
-    
-    _updateNodeFromItemRecursive(state.treeNodes, itemMap);
-    _updateParentSelection(state.treeNodes);
-  }
-
-  void _updateNodeFromItemRecursive(List<SyncTreeNode> nodes, Map<String, SyncItem> itemMap) {
-    for (var node in nodes) {
-      if (itemMap.containsKey(node.relativePath)) {
-        node.item = itemMap[node.relativePath];
-        node.isSelected = node.item!.isSelected;
-      }
-      if (node.children.isNotEmpty) {
-        _updateNodeFromItemRecursive(node.children, itemMap);
-      }
+      _rebuildSidebarCache();
     }
   }
 
@@ -491,44 +697,61 @@ class SyncNotifier extends Notifier<SyncState> {
     return paths;
   }
 
-  void _restoreExpansionState(List<SyncTreeNode> nodes, Set<String> expandedPaths) {
-    for (var node in nodes) {
-      if (expandedPaths.contains(node.relativePath)) {
-        node.isExpanded = true;
-      }
-      if (node.children.isNotEmpty) {
-        _restoreExpansionState(node.children, expandedPaths);
-      }
-    }
-  }
+
 
   void loadMoreChildren(SyncTreeNode node) {
     node.childLimit += 100;
-    state = state.copyWith(treeNodes: List.from(state.treeNodes));
+    _rebuildTreeFromAllItems(_getExpandedPaths(state.treeNodes));
   }
 
   void toggleNodeSelection(SyncTreeNode node, bool selected) {
-    // 1. Recursive update for the visible UI tree
-    _setSelectionRecursive(node, selected);
-    _updateParentSelection(state.treeNodes);
-    
-    // 2. Optimized MASS selection using path-prefix matching on EVERYTHING in state.items
-    // This catches files that aren't even discovered/populated in the tree yet.
-    final List<SyncItem> updatedItems = state.items.map((item) {
-      // If it's the node itself or a child (starts with "node.relativePath/")
-      if (item.relativePath == node.relativePath || 
-          item.relativePath.startsWith('${node.relativePath}${Platform.pathSeparator}')) {
-        item.isSelected = selected;
+    if (node.isSelected == selected) return;
+
+    int countDelta = 0;
+    int sizeDelta = 0;
+
+    void updateRecursive(SyncTreeNode n) {
+      if (n.item != null && n.item!.isSelected != selected) {
+        n.item!.isSelected = selected;
+        countDelta += selected ? 1 : -1;
+        sizeDelta += selected ? n.item!.fileSize : -n.item!.fileSize;
       }
-      return item;
-    }).toList();
+      n.isSelected = selected;
+      for (var child in n.children) {
+        updateRecursive(child);
+      }
+    }
+
+    updateRecursive(node);
+    _updateParentSelection(state.treeNodes);
+
+    // Also update all items in the flat list that might not be in the tree yet
+    // but match the prefix (for safety)
+    final prefix = '${node.relativePath}${Platform.pathSeparator}';
+    for (final item in _allItems) {
+      if (item.relativePath.startsWith(prefix) && item.isSelected != selected) {
+        // Find if this item is ALREADY covered by tree recursion
+        if (!_nodesMap.containsKey(item.relativePath)) {
+           item.isSelected = selected;
+           countDelta += selected ? 1 : -1;
+           sizeDelta += selected ? item.fileSize : -item.fileSize;
+        }
+      }
+    }
+
+    // Track prefix for future background scan items
+    if (selected) {
+      _selectedPrefixes.add(node.relativePath);
+    } else {
+      _selectedPrefixes.remove(node.relativePath);
+    }
 
     state = state.copyWith(
-      items: updatedItems,
-      treeNodes: List.from(state.treeNodes),
-      selectedItems: updatedItems.where((e) => e.isSelected).toList(),
-      sidebarItemLimit: 50, // Reset limit to keep sidebar snappy
+      selectedCount: state.selectedCount + countDelta,
+      totalSelectedSize: state.totalSelectedSize + sizeDelta,
+      itemsRevision: state.itemsRevision + 1,
     );
+    _rebuildSidebarCache();
   }
 
   void _setSelectionRecursive(SyncTreeNode node, bool selected) {
@@ -545,61 +768,62 @@ class SyncNotifier extends Notifier<SyncState> {
     for (var node in nodes) {
       if (node.children.isNotEmpty) {
         _updateParentSelection(node.children);
-        // Parent is selected if all children are selected
         node.isSelected = node.children.every((child) => child.isSelected);
       }
     }
   }
 
   void loadMoreSidebarItems() {
-    state = state.copyWith(
-      sidebarItemLimit: state.sidebarItemLimit + 100,
-    );
+    state = state.copyWith(sidebarItemLimit: state.sidebarItemLimit + 100);
   }
 
-  void toggleAll(bool selected) {
-    for (var node in state.treeNodes) {
-      _setSelectionRecursive(node, selected);
-    }
-    _updateParentSelection(state.treeNodes);
-    
-    // Optimize for mass select-all
-    final updatedItems = state.items.map((item) {
-      item.isSelected = selected;
-      return item;
-    }).toList();
-
-    state = state.copyWith(
-      items: updatedItems,
-      treeNodes: List.from(state.treeNodes),
-      selectedItems: selected ? updatedItems : [],
-      sidebarItemLimit: 50,
-    );
-  }
 
 
   Future<void> sync() async {
-    if (state.items.isEmpty) return;
-    
-    state = state.copyWith(isSyncing: true, syncProgress: 0.0, syncingFileName: '');
-    
-    final selectedItems = state.items.where((e) => e.isSelected).toList();
-    if (selectedItems.isEmpty) {
-       state = state.copyWith(isSyncing: false);
-       return;
+    if (_allItems.isEmpty) return;
+
+    final itemsToSync = _allItems.where((e) => e.isSelected).toList();
+    if (itemsToSync.isEmpty) return;
+
+    int totalBytes = 0;
+    for (final item in itemsToSync) {
+      totalBytes += item.fileSize;
     }
 
+    state = state.copyWith(
+      isSyncing: true,
+      syncProgress: 0.0,
+      syncingFileName: '',
+      syncedCount: 0,
+      syncTotalCount: itemsToSync.length,
+      syncedBytes: 0,
+      syncTotalBytes: totalBytes,
+    );
+
+    DateTime lastUpdate = DateTime.now();
+
     await SyncService.syncItems(
-      selectedItems,
-      onProgress: (count, total, fileName) {
-        state = state.copyWith(
-          syncProgress: count / total,
-          syncingFileName: fileName,
-        );
+      itemsToSync,
+      onProgress: (count, total, fileName, bytesCopied, totalB) {
+        final now = DateTime.now();
+        // Throttle updates to 100ms to prevent UI lag
+        if (now.difference(lastUpdate).inMilliseconds > 100 || count == total) {
+          state = state.copyWith(
+            syncProgress: count / total,
+            syncingFileName: fileName,
+            syncedCount: count,
+            syncedBytes: bytesCopied,
+          );
+          lastUpdate = now;
+        }
       },
     );
-    
-    state = state.copyWith(isSyncing: false, syncProgress: 1.0, syncingFileName: null);
+
+    state = state.copyWith(
+      isSyncing: false,
+      syncProgress: 1.0,
+      syncingFileName: null,
+    );
     await _compare();
   }
 }

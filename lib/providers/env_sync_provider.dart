@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
+import 'dart:io';
 import '../models/env_sync_item.dart';
 import '../services/env_sync_service.dart';
 
@@ -12,6 +13,9 @@ class EnvSyncState {
   final bool isProcessing;
   final bool isGenerated;
   final String? generatedPath;
+  final bool outputExists;
+  final bool replaceFile;
+  final DateTime? lastLoadedAt;
 
   EnvSyncState({
     this.sourceFilePath,
@@ -22,6 +26,9 @@ class EnvSyncState {
     this.isProcessing = false,
     this.isGenerated = false,
     this.generatedPath,
+    this.outputExists = false,
+    this.replaceFile = false,
+    this.lastLoadedAt,
   });
 
   EnvSyncState copyWith({
@@ -33,6 +40,9 @@ class EnvSyncState {
     bool? isProcessing,
     bool? isGenerated,
     String? generatedPath,
+    bool? outputExists,
+    bool? replaceFile,
+    DateTime? lastLoadedAt,
   }) {
     return EnvSyncState(
       sourceFilePath: sourceFilePath ?? this.sourceFilePath,
@@ -43,6 +53,9 @@ class EnvSyncState {
       isProcessing: isProcessing ?? this.isProcessing,
       isGenerated: isGenerated ?? this.isGenerated,
       generatedPath: generatedPath ?? this.generatedPath,
+      outputExists: outputExists ?? this.outputExists,
+      replaceFile: replaceFile ?? this.replaceFile,
+      lastLoadedAt: lastLoadedAt ?? this.lastLoadedAt,
     );
   }
 }
@@ -53,23 +66,56 @@ class EnvSyncNotifier extends Notifier<EnvSyncState> {
     return EnvSyncState();
   }
 
+  void _checkFileExistence({String? dir, String? file}) {
+    final currentDir = dir ?? state.outputDirectory;
+    final sourcePath = state.sourceFilePath;
+    final currentFileName = file ?? state.outputFileName;
+    
+    if (sourcePath == null) {
+      state = state.copyWith(outputExists: false, replaceFile: false);
+      return;
+    }
+
+    final effectiveDir = currentDir ?? p.dirname(sourcePath);
+    final outputPath = p.join(effectiveDir, currentFileName);
+    
+    final exists = File(outputPath).existsSync();
+    state = state.copyWith(
+      outputExists: exists,
+      replaceFile: exists ? state.replaceFile : false, // Reset replace toggle if file no longer exists
+    );
+  }
+
   Future<void> setSourceFile(String path) async {
     state = state.copyWith(
       sourceFilePath: path,
       isGenerated: false,
       generatedPath: null,
     );
+    _checkFileExistence();
+    
     // Parse immediately
     final entries = await EnvSyncService.parseEnvFile(path);
-    state = state.copyWith(entries: entries);
+    state = state.copyWith(entries: entries, lastLoadedAt: DateTime.now());
   }
 
   void setOutputDirectory(String path) {
     state = state.copyWith(outputDirectory: path, isGenerated: false);
+    _checkFileExistence(dir: path);
   }
 
   void setOutputFileName(String name) {
     state = state.copyWith(outputFileName: name, isGenerated: false);
+    _checkFileExistence(file: name);
+  }
+
+  void toggleReplaceFile(bool value) {
+    state = state.copyWith(replaceFile: value);
+  }
+
+  void updateRawContent(String content) {
+    final newEntries = EnvSyncService.parseEnvContent(content);
+    state = state.copyWith(entries: newEntries, isGenerated: false);
   }
 
   void toggleHideValues(bool value) {
@@ -78,6 +124,10 @@ class EnvSyncNotifier extends Notifier<EnvSyncState> {
 
   Future<void> generateFile() async {
     if (state.sourceFilePath == null || state.entries.isEmpty) return;
+    
+    if (state.outputExists && !state.replaceFile) {
+      return; // Can't generate if it exists and replace isn't toggled
+    }
 
     state = state.copyWith(isProcessing: true, isGenerated: false);
 

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:multi_split_view/multi_split_view.dart';
 import '../providers/env_sync_provider.dart';
 import '../providers/sync_provider.dart';
 import '../models/sync_item.dart';
-import '../models/env_sync_item.dart';
 import 'glass_card.dart';
+import 'folder_selector.dart';
+import 'primary_button.dart';
 
 class EnvSyncView extends ConsumerStatefulWidget {
   const EnvSyncView({super.key});
@@ -27,528 +30,767 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
 
   @override
   Widget build(BuildContext context) {
-    final envState = ref.watch(envSyncProvider);
-    final envNotifier = ref.read(envSyncProvider.notifier);
-    final syncNotifier = ref.read(syncProvider.notifier);
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(syncNotifier),
-            const SizedBox(height: 32),
-            // Source file picker
-            _buildSourcePicker(
-              envState,
-              envNotifier,
-            ).animate().fadeIn(delay: 200.ms),
-            const SizedBox(height: 16),
-            // Options row
-            Row(
-              children: [
-                Expanded(child: _buildOutputDirPicker(envState, envNotifier)),
-                const SizedBox(width: 16),
-                Expanded(child: _buildFileNameField(envNotifier)),
-              ],
-            ).animate().fadeIn(delay: 300.ms),
-            const SizedBox(height: 16),
-            // Hide values toggle
-            _buildHideValuesToggle(
-              envState,
-              envNotifier,
-            ).animate().fadeIn(delay: 400.ms),
-            const SizedBox(height: 24),
-            // Preview
-            Expanded(
-              child: GlassCard(
-                padding: EdgeInsets.zero,
-                child: envState.entries.isEmpty
-                    ? _buildPlaceholder()
-                    : _buildPreview(envState),
-              ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.05),
-            ),
-            // Footer
-            if (envState.entries.isNotEmpty)
-              _buildFooter(
-                envState,
-                envNotifier,
-              ).animate().fadeIn(delay: 600.ms),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(SyncNotifier syncNotifier) {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () => syncNotifier.setMode(AppMode.fileContentSync),
-          icon: const Icon(LucideIcons.arrowLeft),
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.white.withValues(alpha: 0.05),
-            padding: const EdgeInsets.all(12),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.greenAccent.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            LucideIcons.fileCode,
-            color: Colors.greenAccent,
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 16),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Env File Sync',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 4,
-              ),
-            ),
-            Text(
-              'Generate env templates from existing files',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSourcePicker(EnvSyncState state, EnvSyncNotifier notifier) {
-    return _HoverCard(
-      color: Colors.blueAccent,
-      onTap: () async {
-        final result = await FilePicker.platform.pickFiles(
-          type: FileType.any,
-          dialogTitle: 'Select .env file',
-        );
-        if (result != null && result.files.single.path != null) {
-          notifier.setSourceFile(result.files.single.path!);
-        }
-      },
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.blueAccent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              LucideIcons.filePlus,
-              size: 20,
-              color: Colors.blueAccent,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Source .env File',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  state.sourceFilePath ?? 'Click to select an env file...',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: state.sourceFilePath != null
-                        ? Colors.white.withValues(alpha: 0.9)
-                        : Colors.grey.withValues(alpha: 0.5),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  maxLines: 1,
-                ),
-              ],
-            ),
-          ),
-          if (state.entries.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.greenAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${state.entries.where((e) => e.key != null).length} vars',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.greenAccent,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOutputDirPicker(EnvSyncState state, EnvSyncNotifier notifier) {
-    return _HoverCard(
-      color: Colors.purpleAccent,
-      onTap: () async {
-        final result = await FilePicker.platform.getDirectoryPath(
-          dialogTitle: 'Select output directory',
-        );
-        if (result != null) notifier.setOutputDirectory(result);
-      },
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.purpleAccent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              LucideIcons.folderOutput,
-              size: 16,
-              color: Colors.purpleAccent,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Output Directory',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  state.outputDirectory ?? 'Same as source (default)',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: state.outputDirectory != null
-                        ? Colors.white.withValues(alpha: 0.8)
-                        : Colors.grey.withValues(alpha: 0.5),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  maxLines: 1,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFileNameField(EnvSyncNotifier notifier) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              LucideIcons.fileEdit,
-              size: 16,
-              color: Colors.amber,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: _fileNameController,
-              onChanged: (val) => notifier.setOutputFileName(val),
-              style: const TextStyle(fontSize: 13),
-              decoration: const InputDecoration(
-                labelText: 'Output File Name',
-                labelStyle: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
+    return Scaffold(
+      body: SafeArea(
+        child: MultiSplitViewTheme(
+          data: MultiSplitViewThemeData(
+            dividerThickness: 4,
+            dividerPainter: DividerPainter(
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              highlightedBackgroundColor: Colors.greenAccent.withValues(
+                alpha: 0.3,
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHideValuesToggle(EnvSyncState state, EnvSyncNotifier notifier) {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: SwitchListTile(
-        title: const Text(
-          'Hide Values',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        subtitle: const Text(
-          'Output only variable names without values',
-          style: TextStyle(fontSize: 12),
-        ),
-        value: state.hideValues,
-        onChanged: (val) => notifier.toggleHideValues(val),
-        secondary: Icon(
-          state.hideValues ? LucideIcons.eyeOff : LucideIcons.eye,
-          size: 20,
-          color: state.hideValues ? Colors.orangeAccent : Colors.grey,
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.02),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              LucideIcons.fileCode,
-              size: 48,
-              color: Colors.grey.withValues(alpha: 0.2),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Select an .env file to preview its contents',
-            style: TextStyle(
-              color: Colors.grey.withValues(alpha: 0.5),
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn();
-  }
-
-  Widget _buildPreview(EnvSyncState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-          child: Row(
-            children: [
-              const Text(
-                'Preview',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          child: MultiSplitView(
+            initialAreas: [
+              Area(
+                flex: 0.25,
+                min: 0.20,
+                builder: (context, area) =>
+                    _LeftSidebar(fileNameController: _fileNameController),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: state.hideValues
-                      ? Colors.orangeAccent.withValues(alpha: 0.1)
-                      : Colors.greenAccent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  state.hideValues ? 'VALUES HIDDEN' : 'WITH VALUES',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: state.hideValues
-                        ? Colors.orangeAccent
-                        : Colors.greenAccent,
-                  ),
-                ),
+              Area(
+                flex: 0.5,
+                min: 0.4,
+                builder: (context, area) => const _MiddleSection(),
+              ),
+              Area(
+                flex: 0.25,
+                min: 0.20,
+                builder: (context, area) => const _RightSidebar(),
               ),
             ],
           ),
         ),
-        const Divider(indent: 24, endIndent: 24),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            itemCount: state.entries.length,
-            itemBuilder: (context, index) {
-              final entry = state.entries[index];
-              return _buildPreviewLine(entry, state.hideValues, index);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPreviewLine(EnvEntry entry, bool hideValues, int index) {
-    if (entry.isBlank) {
-      return const SizedBox(height: 16);
-    }
-
-    if (entry.isComment) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Text(
-          entry.rawLine,
-          style: TextStyle(
-            fontFamily: 'Consolas',
-            fontSize: 13,
-            color: Colors.grey.withValues(alpha: 0.4),
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(fontFamily: 'Consolas', fontSize: 13),
-          children: [
-            TextSpan(
-              text: entry.key,
-              style: const TextStyle(
-                color: Colors.blueAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            TextSpan(
-              text: '=',
-              style: TextStyle(color: Colors.grey.withValues(alpha: 0.5)),
-            ),
-            if (!hideValues)
-              TextSpan(
-                text: entry.value,
-                style: const TextStyle(color: Colors.greenAccent),
-              ),
-          ],
-        ),
       ),
     );
   }
+}
 
-  Widget _buildFooter(EnvSyncState state, EnvSyncNotifier notifier) {
+class _LeftSidebar extends ConsumerStatefulWidget {
+  final TextEditingController fileNameController;
+
+  const _LeftSidebar({required this.fileNameController});
+
+  @override
+  ConsumerState<_LeftSidebar> createState() => _LeftSidebarState();
+}
+
+class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
+  bool _showOutputDir = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(envSyncProvider);
+    final notifier = ref.read(envSyncProvider.notifier);
+    final syncNotifier = ref.read(syncProvider.notifier);
+
     return Container(
-      padding: const EdgeInsets.only(top: 24),
-      child: Row(
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF14142B).withValues(alpha: 0.9),
+            const Color(0xFF0F0F0F).withValues(alpha: 1.0),
+          ],
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (state.isGenerated)
-            Expanded(
-              child: Row(
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => syncNotifier.setMode(AppMode.fileContentSync),
+                icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  padding: const EdgeInsets.all(8),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: _buildLogo()),
+            ],
+          ),
+          const SizedBox(height: 40),
+          const Text(
+            'CONFIGURATION',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+              color: Colors.grey,
+            ),
+          ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
+          const SizedBox(height: 16),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
                 children: [
-                  const Icon(
-                    LucideIcons.checkCircle,
-                    size: 16,
-                    color: Colors.greenAccent,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Generated: ${state.generatedPath}',
-                      style: const TextStyle(
-                        color: Colors.greenAccent,
-                        fontSize: 12,
+                  PathSelectorCard(
+                    title: 'Source .env File',
+                    path: state.sourceFilePath,
+                    hintText: 'Select source .env file...',
+                    icon: LucideIcons.filePlus,
+                    color: Colors.blueAccent,
+                    onManualPath: (path) => notifier.setSourceFile(path),
+                    onTap: () async {
+                      final result = await FilePicker.platform.pickFiles(
+                        type: FileType.any,
+                        dialogTitle: 'Select .env file',
+                      );
+                      if (result != null && result.files.single.path != null) {
+                        notifier.setSourceFile(result.files.single.path!);
+                      }
+                    },
+                  ).animate().fadeIn(delay: 300.ms),
+                  const SizedBox(height: 12),
+                  if (state.sourceFilePath != null && !_showOutputDir)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.02),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Output will be saved to:',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            state.outputDirectory ?? 'Same directory as source',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () => setState(() => _showOutputDir = true),
+                            icon: const Icon(LucideIcons.folderEdit, size: 14),
+                            label: const Text('Change Directory', style: TextStyle(fontSize: 12)),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blueAccent,
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 300.ms),
+                  if (_showOutputDir) ...[
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          LucideIcons.arrowDown,
+                          color: Colors.grey,
+                          size: 16,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    PathSelectorCard(
+                      title: 'Output Directory',
+                      path: state.outputDirectory,
+                      hintText: 'Same as source (default)',
+                      icon: LucideIcons.folderOutput,
+                      color: Colors.purpleAccent,
+                      onManualPath: (path) => notifier.setOutputDirectory(path),
+                      onTap: () async {
+                        final result = await FilePicker.platform.getDirectoryPath(
+                          dialogTitle: 'Select output directory',
+                        );
+                        if (result != null) notifier.setOutputDirectory(result);
+                      },
+                    ).animate().fadeIn(delay: 300.ms),
+                  ],
                 ],
               ),
-            )
-          else
-            Text(
-              '${state.entries.where((e) => e.key != null).length} variables found',
-              style: const TextStyle(color: Colors.grey),
-            ),
-          const Spacer(),
-          ElevatedButton.icon(
-            onPressed: state.isProcessing || state.entries.isEmpty
-                ? null
-                : () => notifier.generateFile(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent.withValues(alpha: 0.8),
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-            ),
-            icon: Icon(
-              state.isProcessing ? LucideIcons.loader : LucideIcons.download,
-              size: 18,
-            ),
-            label: Text(
-              state.isProcessing ? 'Generating...' : 'Generate File',
-              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildLogo() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Colors.greenAccent, Colors.tealAccent],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.greenAccent.withValues(alpha: 0.3),
+                blurRadius: 15,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: const Icon(
+            LucideIcons.fileCode,
+            color: Colors.black87,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 16),
+        ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [Colors.white, Colors.grey],
+          ).createShader(bounds),
+          child: const Text(
+            'Env Sync',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ],
+    ).animate().fadeIn().slideX(begin: -0.1);
+  }
 }
 
-class _HoverCard extends StatefulWidget {
-  final Color color;
-  final VoidCallback onTap;
-  final Widget child;
-
-  const _HoverCard({
-    required this.color,
-    required this.onTap,
-    required this.child,
-  });
+class _MiddleSection extends ConsumerStatefulWidget {
+  const _MiddleSection();
 
   @override
-  State<_HoverCard> createState() => _HoverCardState();
+  ConsumerState<_MiddleSection> createState() => _MiddleSectionState();
 }
 
-class _HoverCardState extends State<_HoverCard> {
-  bool _isHovered = false;
+class _MiddleSectionState extends ConsumerState<_MiddleSection> {
+  late _EnvSyntaxController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = _EnvSyntaxController();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GlassCard(
-        padding: EdgeInsets.zero,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(24),
-          hoverColor: Colors.transparent,
-          splashColor: widget.color.withValues(alpha: 0.1),
-          highlightColor: Colors.transparent,
-          child: AnimatedContainer(
-            duration: 200.ms,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: _isHovered
-                  ? widget.color.withValues(alpha: 0.05)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: widget.child,
+    final state = ref.watch(envSyncProvider);
+    final notifier = ref.read(envSyncProvider.notifier);
+
+    _textController.updateHideValues(state.hideValues);
+
+    ref.listen(envSyncProvider, (previous, next) {
+      final fileLoaded = previous?.lastLoadedAt != next.lastLoadedAt;
+      
+      if (fileLoaded) {
+        final newText = next.entries.map((e) => e.toOutputLine(hideValues: false)).join('\n');
+        if (_textController.text != newText) {
+          _textController.text = newText;
+        }
+      }
+    });
+
+    if (_textController.text.isEmpty && state.entries.isNotEmpty) {
+      _textController.text = state.entries.map((e) => e.toOutputLine(hideValues: false)).join('\n');
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Preview',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: state.hideValues
+                              ? Colors.orangeAccent.withValues(alpha: 0.1)
+                              : Colors.greenAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          state.hideValues ? 'VALUES HIDDEN' : 'WITH VALUES',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: state.hideValues
+                                ? Colors.orangeAccent
+                                : Colors.greenAccent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    state.entries.isEmpty
+                        ? 'Select an .env file to preview its contents'
+                        : '${state.entries.where((e) => e.key != null).length} variables found',
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                ],
+              ),
+              const Spacer(),
+            ],
           ),
-        ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: GlassCard(
+              padding: EdgeInsets.zero,
+              blur: 10,
+              opacity: 0.02,
+              child: state.entries.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.02),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              LucideIcons.fileCode,
+                              size: 48,
+                              color: Colors.grey.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            'No data to display',
+                            style: TextStyle(
+                              color: Colors.grey.withValues(alpha: 0.5),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn()
+                  : Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.02),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        maxLines: null,
+                        readOnly: false,
+                        inputFormatters: [
+                          _HideValuesFormatter(hideValues: state.hideValues),
+                        ],
+                        style: const TextStyle(
+                          fontFamily: 'Consolas',
+                          fontSize: 14,
+                          color: Colors.white70,
+                          height: 1.5,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                        onChanged: (val) {
+                          notifier.updateRawContent(val);
+                        },
+                      ),
+                    ),
+            ),
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.02),
+        ],
       ),
     );
+  }
+}
+
+class _RightSidebar extends ConsumerStatefulWidget {
+  const _RightSidebar();
+
+  @override
+  ConsumerState<_RightSidebar> createState() => _RightSidebarState();
+}
+
+class _RightSidebarState extends ConsumerState<_RightSidebar> {
+  late TextEditingController _fileNameController;
+
+  @override
+  void initState() {
+    super.initState();
+    final state = ref.read(envSyncProvider);
+    _fileNameController = TextEditingController(text: state.outputFileName);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final state = ref.watch(envSyncProvider);
+    if (state.outputFileName != _fileNameController.text) {
+      _fileNameController.text = state.outputFileName;
+    }
+  }
+
+  @override
+  void dispose() {
+    _fileNameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(envSyncProvider);
+    final notifier = ref.read(envSyncProvider.notifier);
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        color: Colors.black.withValues(alpha: 0.2),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'OUTPUT PREFERENCES',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  GlassCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                LucideIcons.fileEdit,
+                                size: 16,
+                                color: Colors.amber,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Output File Name',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _fileNameController,
+                          onChanged: (val) => notifier.setOutputFileName(val),
+                          style: const TextStyle(fontSize: 13),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.05),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.05),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.amber.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 400.ms),
+                ],
+              ),
+            ),
+          ),
+          _buildSidebarCard(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: const Text(
+                    'Hide Values',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  value: state.hideValues,
+                  onChanged: (val) => notifier.toggleHideValues(val),
+                  secondary: AnimatedRotation(
+                    duration: 300.ms,
+                    turns: state.hideValues ? 0.5 : 0,
+                    child: Icon(
+                      state.hideValues ? LucideIcons.eyeOff : LucideIcons.eye,
+                      size: 18,
+                      color: state.hideValues
+                          ? Colors.orangeAccent
+                          : Colors.grey.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+                const SizedBox(height: 16),
+                if (state.outputExists)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orangeAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: SwitchListTile(
+                      title: const Text(
+                        'File Exists! Replace?',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orangeAccent),
+                      ),
+                      value: state.replaceFile,
+                      onChanged: (val) => notifier.toggleReplaceFile(val),
+                      activeThumbColor: Colors.orangeAccent,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      dense: true,
+                    ),
+                  ).animate().fadeIn().slideY(begin: -0.1),
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    onPressed: state.isProcessing || state.entries.isEmpty || (state.outputExists && !state.replaceFile)
+                        ? null
+                        : () => notifier.generateFile(),
+                    icon: state.isProcessing
+                        ? LucideIcons.loader
+                        : LucideIcons.download,
+                    label: state.isProcessing
+                        ? 'Generating...'
+                        : 'Generate File',
+                    color: Colors.greenAccent.withValues(alpha: 0.8),
+                    isLoading: state.isProcessing,
+                  ),
+                ),
+                if (state.isGenerated) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.greenAccent.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          LucideIcons.checkCircle,
+                          size: 14,
+                          color: Colors.greenAccent,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Generated to: ${state.generatedPath ?? "Directory"}',
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn().slideY(begin: -0.2),
+                ],
+              ],
+            ),
+          ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarCard({required Widget child}) {
+    return Container(
+      margin: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _EnvSyntaxController extends TextEditingController {
+  bool hideValues = false;
+
+  _EnvSyntaxController();
+
+  void updateHideValues(bool value) {
+    if (hideValues != value) {
+      hideValues = value;
+      notifyListeners();
+    }
+  }
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final List<TextSpan> children = [];
+    final lines = text.split('\n');
+    
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final trimmed = line.trim();
+      
+      if (trimmed.startsWith('#')) {
+        // Comment
+        children.add(TextSpan(text: line, style: style?.copyWith(color: Colors.grey.withValues(alpha: 0.5), fontStyle: FontStyle.italic)));
+      } else if (trimmed.contains('=')) {
+        // Key/Value Pair
+        final eqIndex = line.indexOf('=');
+        final keyPart = line.substring(0, eqIndex + 1); // includes '='
+        final valuePart = line.substring(eqIndex + 1);
+        
+        String displayValue = valuePart;
+        if (hideValues) {
+          // Replace each character with a dot, but keep the \r if present
+          if (valuePart.endsWith('\r')) {
+            displayValue = '•' * (valuePart.length - 1) + '\r';
+          } else {
+            displayValue = '•' * valuePart.length;
+          }
+        }
+
+        children.add(TextSpan(
+          children: [
+             TextSpan(text: keyPart, style: style?.copyWith(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+             TextSpan(text: displayValue, style: style?.copyWith(color: Colors.greenAccent)),
+          ]
+        ));
+      } else {
+        // Plain text / empty space
+        children.add(TextSpan(text: line, style: style));
+      }
+      
+      if (i < lines.length - 1) {
+        children.add(TextSpan(text: '\n', style: style));
+      }
+    }
+
+    return TextSpan(style: style, children: children);
+  }
+}
+
+class _HideValuesFormatter extends TextInputFormatter {
+  final bool hideValues;
+  _HideValuesFormatter({required this.hideValues});
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (!hideValues) return newValue;
+
+    // Detect what changed by finding the first difference
+    int firstDiff = 0;
+    while (firstDiff < oldValue.text.length &&
+           firstDiff < newValue.text.length &&
+           oldValue.text[firstDiff] == newValue.text[firstDiff]) {
+      firstDiff++;
+    }
+
+    // Check if the difference happened after an '=' in that line
+    final prefix = newValue.text.substring(0, firstDiff);
+    final lastNewLine = prefix.lastIndexOf('\n');
+    final startOfLine = lastNewLine == -1 ? 0 : lastNewLine + 1;
+    final currentLinePrefix = prefix.substring(startOfLine);
+    
+    if (currentLinePrefix.contains('=')) {
+      // If the change is after the first '=', block it
+      return oldValue;
+    }
+
+    return newValue;
   }
 }

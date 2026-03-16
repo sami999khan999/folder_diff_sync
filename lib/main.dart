@@ -8,6 +8,7 @@ import 'widgets/folder_selector.dart';
 import 'widgets/glass_card.dart';
 import 'widgets/env_sync_view.dart';
 import 'widgets/sync_tree_view.dart';
+import 'widgets/primary_button.dart';
 import 'package:multi_split_view/multi_split_view.dart';
 
 void main() {
@@ -20,29 +21,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Folder Sync Pro',
+      title: 'Folder Diff Sync',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        fontFamily: 'Minecraft',
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(letterSpacing: 3),
-          bodyMedium: TextStyle(letterSpacing: 3),
-          bodySmall: TextStyle(letterSpacing: 3),
-          titleLarge: TextStyle(letterSpacing: 3),
-          titleMedium: TextStyle(letterSpacing: 3),
-          titleSmall: TextStyle(letterSpacing: 3),
-          displayLarge: TextStyle(letterSpacing: 3),
-          displayMedium: TextStyle(letterSpacing: 3),
-          displaySmall: TextStyle(letterSpacing: 3),
-          headlineLarge: TextStyle(letterSpacing: 3),
-          headlineMedium: TextStyle(letterSpacing: 3),
-          headlineSmall: TextStyle(letterSpacing: 3),
-          labelLarge: TextStyle(letterSpacing: 3),
-          labelMedium: TextStyle(letterSpacing: 3),
-          labelSmall: TextStyle(letterSpacing: 3),
-        ),
+        fontFamily: 'Fredoka',
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blueAccent,
           brightness: Brightness.dark,
@@ -59,7 +43,7 @@ class MyApp extends StatelessWidget {
       ),
       builder: (context, child) {
         return DefaultTextStyle(
-          style: const TextStyle(fontFamily: 'Minecraft', letterSpacing: 5),
+          style: const TextStyle(fontFamily: 'Fredoka'),
           child: child!,
         );
       },
@@ -120,14 +104,20 @@ class SelectionScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w500,
               ),
             ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
-            const Text(
-                  'Folder Sync Pro',
+            Row(
+              children: [
+                Image.asset('assets/icon.png', width: 44, height: 44),
+                const SizedBox(width: 16),
+                const Text(
+                  'Folder Diff Sync',
                   style: TextStyle(
                     fontSize: 48,
                     fontWeight: FontWeight.bold,
-                    letterSpacing: 5,
+                    letterSpacing: 2,
                   ),
-                )
+                ),
+              ],
+            )
                 .animate()
                 .fadeIn(duration: 600.ms, delay: 100.ms)
                 .slideY(begin: 0.2),
@@ -363,7 +353,7 @@ class _LeftSidebar extends ConsumerWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              letterSpacing: 3,
+              letterSpacing: 2,
               color: Colors.grey,
             ),
           ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
@@ -399,13 +389,13 @@ class _LeftSidebar extends ConsumerWidget {
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  child: _buildPrimaryButton(
+                  child: PrimaryButton(
                     onPressed:
-                        state.isSyncing || !state.items.any((e) => e.isSelected)
+                        state.isSyncing || state.isBackgroundScanning || state.selectedCount == 0
                         ? null
                         : () => notifier.sync(),
                     icon: LucideIcons.copy,
-                    label: 'Start Syncing',
+                    label: state.isBackgroundScanning ? 'Scanning...' : 'Start Syncing',
                     isLoading: state.isSyncing,
                   ),
                 ),
@@ -451,7 +441,7 @@ class _LeftSidebar extends ConsumerWidget {
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              letterSpacing: 4,
+              letterSpacing: 2,
               height: 1.1,
             ),
           ),
@@ -470,60 +460,6 @@ class _LeftSidebar extends ConsumerWidget {
       ),
       child: child,
     );
-  }
-
-  Widget _buildPrimaryButton({
-    required VoidCallback? onPressed,
-    required IconData icon,
-    required String label,
-    bool isLoading = false,
-  }) {
-    return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: onPressed != null
-                ? [
-                    BoxShadow(
-                      color: Colors.blueAccent.withValues(alpha: 0.2),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: ElevatedButton.icon(
-            onPressed: onPressed,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueAccent,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: Colors.white.withValues(alpha: 0.05),
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              elevation: 0,
-            ),
-            icon: isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(icon, size: 18),
-            label: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 3,
-              ),
-            ),
-          ),
-        )
-        .animate(target: onPressed == null ? 0 : 1)
-        .scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1));
   }
 }
 
@@ -552,37 +488,55 @@ class _MiddleSection extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 3,
+                          letterSpacing: 2,
                         ),
                       ),
                       const SizedBox(width: 12),
                       IconButton(
-                        onPressed: state.isComparing || state.isBackgroundScanning
-                            ? null
-                            : () => notifier.reload(),
-                        icon: Icon(
-                          LucideIcons.refreshCw,
-                          size: 16,
-                          color: state.isComparing || state.isBackgroundScanning
-                              ? Colors.grey
-                              : Colors.blueAccent,
-                        ),
-                        tooltip: 'Reload structure',
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                      ).animate(target: state.isComparing || state.isBackgroundScanning ? 1 : 0).shimmer(),
+                            onPressed:
+                                state.isComparing || state.isBackgroundScanning
+                                ? null
+                                : () => notifier.reload(),
+                            icon: Icon(
+                              LucideIcons.refreshCw,
+                              size: 16,
+                              color:
+                                  state.isComparing ||
+                                      state.isBackgroundScanning
+                                  ? Colors.grey
+                                  : Colors.blueAccent,
+                            ),
+                            tooltip: 'Reload structure',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.05,
+                              ),
+                              padding: const EdgeInsets.all(8),
+                            ),
+                          )
+                          .animate(
+                            target:
+                                state.isComparing || state.isBackgroundScanning
+                                ? 1
+                                : 0,
+                          )
+                          .shimmer(),
                     ],
                   ),
                   Row(
                     children: [
                       Text(
-                        state.isBackgroundScanning ? 'Discovering files...' : 'Select items to include in sync',
+                        state.isBackgroundScanning
+                            ? 'Discovering files...'
+                            : 'Select items to include in sync',
                         style: TextStyle(
-                          color: state.isBackgroundScanning ? Colors.blueAccent.withValues(alpha: 0.7) : Colors.grey,
+                          color: state.isBackgroundScanning
+                              ? Colors.blueAccent.withValues(alpha: 0.7)
+                              : Colors.grey,
                           fontSize: 13,
-                          fontWeight: state.isBackgroundScanning ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: state.isBackgroundScanning
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                       if (state.isBackgroundScanning) ...[
@@ -657,8 +611,15 @@ class _RightSidebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(syncProvider);
-    final displayedItems = state.selectedItems.take(state.sidebarItemLimit).toList();
-    final hasMore = state.selectedItems.length > state.sidebarItemLimit;
+    final notifier = ref.read(syncProvider.notifier);
+    // Watch itemsRevision for updates
+    ref.watch(syncProvider.select((s) => s.itemsRevision));
+    final selItems = state.sidebarItems;
+
+    final displayedItems = selItems
+        .take(state.sidebarItemLimit)
+        .toList();
+    final hasMore = selItems.length > state.sidebarItemLimit;
 
     return Container(
       decoration: BoxDecoration(
@@ -677,39 +638,122 @@ class _RightSidebar extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'TRANSFER QUEUE',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 3,
-                          color: Colors.grey,
-                        ),
+                      Row(
+                        children: [
+                           Image.asset('assets/logo.png', width: 20, height: 20),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'TRANSFER QUEUE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
                       const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                      TextButton(
+                        onPressed: () => notifier.toggleAll(true),
+                        style: TextButton.styleFrom(
+                          minimumSize: Size.zero,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.blueAccent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
+                        child: const Text('All', style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
+                      ),
+                      TextButton(
+                        onPressed: () => notifier.toggleAll(false),
+                        style: TextButton.styleFrom(
+                          minimumSize: Size.zero,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: Text(
-                          '${state.selectedItems.length}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blueAccent,
+                        child: const Text('None', style: TextStyle(fontSize: 10, color: Colors.redAccent)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Search Bar
+                  Container(
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.search, size: 14, color: Colors.white.withValues(alpha: 0.3)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            onChanged: (val) => notifier.setSidebarSearchQuery(val),
+                            style: const TextStyle(fontSize: 12, color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Search in queue...',
+                              hintStyle: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.2)),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
                           ),
+                        ),
+                        if (state.sidebarSearchQuery.isNotEmpty)
+                          GestureDetector(
+                            onTap: () => notifier.setSidebarSearchQuery(''),
+                            child: Icon(LucideIcons.x, size: 14, color: Colors.white.withValues(alpha: 0.3)),
+                          ),
+                        const SizedBox(width: 8),
+                        const VerticalDivider(width: 1, indent: 8, endIndent: 8, color: Colors.white12),
+                        const SizedBox(width: 4),
+                        PopupMenuButton<SidebarSortOrder>(
+                          offset: const Offset(0, 40),
+                          icon: Icon(LucideIcons.listFilter, size: 14, color: Colors.white.withValues(alpha: 0.3)),
+                          padding: EdgeInsets.zero,
+                          tooltip: 'Sort By',
+                          color: const Color(0xFF1E1E1E),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          onSelected: (order) => notifier.setSidebarSortOrder(order),
+                          itemBuilder: (context) => [
+                            _buildSortItem(SidebarSortOrder.name, 'Name', LucideIcons.type, state.sidebarSortOrder),
+                            _buildSortItem(SidebarSortOrder.size, 'Size', LucideIcons.hardDrive, state.sidebarSortOrder),
+                            _buildSortItem(SidebarSortOrder.status, 'Status', LucideIcons.info, state.sidebarSortOrder),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Size and count summary
+                  Row(
+                    children: [
+                      Icon(LucideIcons.file, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${state.selectedCount} files',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(LucideIcons.hardDrive, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatBytes(state.totalSelectedSize),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 24),
                   Expanded(
-                    child: state.selectedItems.isEmpty
+                    child: selItems.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -731,12 +775,17 @@ class _RightSidebar extends ConsumerWidget {
                             ),
                           )
                         : ListView.separated(
-                            itemCount: displayedItems.length + (hasMore ? 1 : 0),
+                            itemCount:
+                                displayedItems.length + (hasMore ? 1 : 0),
                             separatorBuilder: (context, index) =>
                                 const SizedBox(height: 4),
                             itemBuilder: (context, index) {
                               if (index == displayedItems.length) {
-                                return _buildLoadMore(ref, state.selectedItems.length - state.sidebarItemLimit);
+                                return _buildLoadMore(
+                                  ref,
+                                  selItems.length -
+                                      state.sidebarItemLimit,
+                                );
                               }
                               final item = displayedItems[index];
                               return _SyncItemTile(item: item);
@@ -748,7 +797,7 @@ class _RightSidebar extends ConsumerWidget {
             ),
           ),
           if (state.isSyncing || state.syncProgress > 0)
-            _buildProgressFooter(state).animate().fadeIn().slideY(begin: 0.1),
+            _buildProgressFooter(state, notifier).animate().fadeIn().slideY(begin: 0.1),
         ],
       ),
     );
@@ -782,7 +831,7 @@ class _RightSidebar extends ConsumerWidget {
     );
   }
 
-  Widget _buildProgressFooter(SyncState state) {
+  Widget _buildProgressFooter(SyncState state, SyncNotifier notifier) {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -807,7 +856,7 @@ class _RightSidebar extends ConsumerWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  letterSpacing: 3,
+                  letterSpacing: 2,
                 ),
               ),
               const Spacer(),
@@ -821,6 +870,28 @@ class _RightSidebar extends ConsumerWidget {
               ),
             ],
           ),
+          if (state.isSyncing) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${state.syncedCount} / ${state.syncTotalCount} files synced',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+                Text(
+                  '${_formatBytes(state.syncedBytes)} / ${_formatBytes(state.syncTotalBytes)}',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -874,17 +945,58 @@ class _RightSidebar extends ConsumerWidget {
       ),
     );
   }
+
+  PopupMenuItem<SidebarSortOrder> _buildSortItem(
+    SidebarSortOrder order,
+    String label,
+    IconData icon,
+    SidebarSortOrder current,
+  ) {
+    final isSelected = order == current;
+    return PopupMenuItem(
+      value: order,
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: isSelected ? Colors.blueAccent : Colors.grey),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isSelected ? Colors.blueAccent : Colors.white70,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          const Spacer(),
+          if (isSelected)
+            const Icon(LucideIcons.check, size: 12, color: Colors.blueAccent),
+        ],
+      ),
+    );
+  }
+
+  static String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    int i = 0;
+    double size = bytes.toDouble();
+    while (size >= 1024 && i < suffixes.length - 1) {
+      size /= 1024;
+      i++;
+    }
+    return '${size.toStringAsFixed(i == 0 ? 0 : 1)} ${suffixes[i]}';
+  }
 }
 
-class _SyncItemTile extends StatefulWidget {
+class _SyncItemTile extends ConsumerStatefulWidget {
   final SyncItem item;
   const _SyncItemTile({required this.item});
 
   @override
-  State<_SyncItemTile> createState() => _SyncItemTileState();
+  ConsumerState<_SyncItemTile> createState() => _SyncItemTileState();
 }
 
-class _SyncItemTileState extends State<_SyncItemTile> {
+class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
   bool _isHovered = false;
 
   @override
@@ -931,12 +1043,34 @@ class _SyncItemTileState extends State<_SyncItemTile> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (widget.item.type == SyncType.file && widget.item.fileSize > 0) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      _RightSidebar._formatBytes(widget.item.fileSize),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   _buildOwnershipLine(widget.item.status),
                 ],
               ),
             ),
             _StatusIcon(status: widget.item.status),
+            const SizedBox(width: 12),
+            Transform.scale(
+              scale: 0.8,
+              child: Checkbox(
+                value: widget.item.isSelected,
+                activeColor: Colors.blueAccent,
+                checkColor: Colors.white,
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                onChanged: (val) => ref.read(syncProvider.notifier).toggleItemSelectionByPath(widget.item.relativePath, val ?? false),
+              ),
+            ),
           ],
         ),
       ),
@@ -1048,7 +1182,7 @@ class FileContentSyncScreen extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 4,
+                        letterSpacing: 2,
                       ),
                     ),
                     Text(

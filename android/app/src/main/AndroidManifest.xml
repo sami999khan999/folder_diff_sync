@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="folder_def_sync"
+        android:label="Folder Diff Sync"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -12,12 +12,15 @@ class DiffList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(syncProvider);
     final notifier = ref.read(syncProvider.notifier);
+    // Watch itemsRevision to rebuild when items change
+    ref.watch(syncProvider.select((s) => s.itemsRevision));
+    final items = notifier.allItems;
 
     if (state.sourcePath == null || state.targetPath == null) {
       return _buildPlaceholder('Select both folders to see differences', LucideIcons.search);
     }
 
-    if (state.items.isEmpty && !state.isComparing) {
+    if (items.isEmpty && !state.isComparing) {
       return _buildPlaceholder('Folders are in sync! No missing files found.', LucideIcons.checkCircle);
     }
 
@@ -38,7 +41,7 @@ class DiffList extends ConsumerWidget {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '${state.items.length} items to reconcile',
+                        '${items.length} items to reconcile',
                         style: TextStyle(fontSize: 12, color: Colors.grey.withValues(alpha: 0.6)),
                       ),
                     ],
@@ -98,13 +101,18 @@ class DiffList extends ConsumerWidget {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: state.items.length,
+            itemCount: items.length,
             itemBuilder: (context, index) {
-              final item = state.items[index];
-              return _DiffItemTile(
+              final item = items[index];
+              final tile = _DiffItemTile(
                 item: item,
                 onChanged: (_) => notifier.toggleItemSelection(index),
-              ).animate().fadeIn(delay: (index * 50).ms).slideX(begin: 0.1);
+              );
+              // Only animate the first 20 items to avoid animation blowup
+              if (index < 20) {
+                return tile.animate().fadeIn(delay: (index * 30).ms).slideX(begin: 0.05);
+              }
+              return tile;
             },
           ),
         ),

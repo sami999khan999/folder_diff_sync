@@ -15,7 +15,7 @@ class FolderSelectorRow extends ConsumerWidget {
 
     return Column(
       children: [
-        FolderCard(
+        PathSelectorCard(
           title: 'Source Folder',
           path: state.sourcePath,
           icon: LucideIcons.folderInput,
@@ -38,7 +38,7 @@ class FolderSelectorRow extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        FolderCard(
+        PathSelectorCard(
           title: 'Target Folder',
           path: state.targetPath,
           icon: LucideIcons.folderOutput,
@@ -54,29 +54,31 @@ class FolderSelectorRow extends ConsumerWidget {
   }
 }
 
-class FolderCard extends StatefulWidget {
+class PathSelectorCard extends StatefulWidget {
   final String title;
   final String? path;
   final IconData icon;
   final Color color;
+  final String hintText;
   final Function(String) onManualPath;
   final VoidCallback onTap;
 
-  const FolderCard({
+  const PathSelectorCard({
     super.key,
     required this.title,
     this.path,
     required this.icon,
     required this.color,
+    this.hintText = 'Enter folder path...',
     required this.onManualPath,
     required this.onTap,
   });
 
   @override
-  State<FolderCard> createState() => _FolderCardState();
+  State<PathSelectorCard> createState() => _PathSelectorCardState();
 }
 
-class _FolderCardState extends State<FolderCard> {
+class _PathSelectorCardState extends State<PathSelectorCard> {
   late TextEditingController _controller;
   bool _isFocused = false;
 
@@ -87,7 +89,7 @@ class _FolderCardState extends State<FolderCard> {
   }
 
   @override
-  void didUpdateWidget(FolderCard oldWidget) {
+  void didUpdateWidget(PathSelectorCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!_isFocused && widget.path != oldWidget.path) {
       _controller.text = widget.path ?? '';
@@ -147,7 +149,7 @@ class _FolderCardState extends State<FolderCard> {
                       controller: _controller,
                       style: const TextStyle(fontSize: 13, color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Enter folder path...',
+                        hintText: widget.hintText,
                         hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

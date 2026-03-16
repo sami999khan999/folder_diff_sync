@@ -1,0 +1,13 @@
+Analyzing folder_diff_sync...                                   
+
+  error - The method 'toggleAll' isn't defined for the type 'SyncNotifier' - lib\main.dart:559:43 - undefined_method
+  error - The method 'toggleAll' isn't defined for the type 'SyncNotifier' - lib\main.dart:565:43 - undefined_method
+warning - The value of the local variable 'remaining' isn't used - lib\main.dart:835:11 - unused_local_variable
+warning - The value of the local variable 'remainingBytes' isn't used - lib\main.dart:836:11 - unused_local_variable
+   info - Unnecessary braces in a string interpolation - lib\providers\sync_provider.dart:209:23 - unnecessary_brace_in_string_interps
+   info - The local variable '_updateRecursive' starts with an underscore - lib\providers\sync_provider.dart:714:10 - no_leading_underscores_for_local_identifiers
+  error - The name 'loadMoreSidebarItems' is already defined - lib\providers\sync_provider.dart:781:8 - duplicate_definition
+  error - The method 'toggleAll' isn't defined for the type 'SyncNotifier' - lib\widgets\diff_list.dart:51:47 - undefined_method
+  error - The method 'toggleAll' isn't defined for the type 'SyncNotifier' - lib\widgets\diff_list.dart:57:47 - undefined_method
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\widgets\env_sync_view.dart:622:23 - deprecated_member_use
+

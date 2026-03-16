@@ -6,7 +6,15 @@ class EnvSyncService {
     final file = File(filePath);
     if (!await file.exists()) return [];
 
-    final lines = await file.readAsLines();
+    final content = await file.readAsString();
+    return parseEnvContent(content);
+  }
+
+  static List<EnvEntry> parseEnvContent(String content) {
+    if (content.isEmpty) return [];
+    
+    // Split by lines, being careful to preserve empty lines
+    final lines = content.split(RegExp(r'\r?\n'));
     final entries = <EnvEntry>[];
 
     for (final line in lines) {

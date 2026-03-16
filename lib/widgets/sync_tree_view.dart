@@ -31,7 +31,8 @@ class SyncTreeView extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       itemCount: treeNodes.length,
       itemBuilder: (context, index) {
-        return _TreeNodeWidget(node: treeNodes[index], depth: 0);
+        final node = treeNodes[index];
+        return _TreeNodeWidget(node: node, key: ValueKey(node.relativePath));
       },
     );
   }
@@ -39,11 +40,10 @@ class SyncTreeView extends ConsumerWidget {
 
 class _TreeNodeWidget extends ConsumerStatefulWidget {
   final SyncTreeNode node;
-  final int depth;
 
   const _TreeNodeWidget({
     required this.node,
-    required this.depth,
+    super.key,
   });
 
   @override
@@ -88,7 +88,7 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                 ),
               ),
               padding: EdgeInsets.only(
-                left: 16.0 + (widget.depth * 24.0),
+                left: 16.0 + (widget.node.depth * 24.0),
                 right: 16.0,
                 top: 8.0,
                 bottom: 8.0,
@@ -144,7 +144,7 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
         if (widget.node.isDirectory && widget.node.isExpanded) ...[
           if (widget.node.isLoading)
             Padding(
-              padding: EdgeInsets.only(left: 56.0 + (widget.depth * 24.0), top: 8, bottom: 8),
+              padding: EdgeInsets.only(left: 56.0 + (widget.node.depth * 24.0), top: 8, bottom: 8),
               child: Row(
                 children: [
                   SizedBox(
@@ -165,23 +165,19 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                   ),
                 ],
               ),
-            )
-          else
-            ...[
-              ...widget.node.children.take(widget.node.childLimit).map((child) => _TreeNodeWidget(node: child, depth: widget.depth + 1)),
-              if (widget.node.children.length > widget.node.childLimit)
-                _buildLoadMoreNodes(context, notifier, widget.node, widget.depth + 1),
-            ],
+            ),
+          if (widget.node.children.length > widget.node.childLimit)
+            _buildLoadMoreNodes(context, notifier, widget.node),
         ],
       ],
     );
   }
 
-  Widget _buildLoadMoreNodes(BuildContext context, SyncNotifier notifier, SyncTreeNode node, int depth) {
+  Widget _buildLoadMoreNodes(BuildContext context, SyncNotifier notifier, SyncTreeNode node) {
     return InkWell(
       onTap: () => notifier.loadMoreChildren(node),
       child: Padding(
-        padding: EdgeInsets.only(left: 56.0 + (depth * 24.0), top: 8, bottom: 8),
+        padding: EdgeInsets.only(left: 56.0 + (node.depth * 24.0), top: 8, bottom: 8),
         child: Row(
           children: [
             const Icon(LucideIcons.plusCircle, size: 14, color: Colors.blueAccent),

@@ -1,7 +1,7 @@
 class EnvEntry {
   final String rawLine;
-  final String? key;
-  final String? value;
+  String? key;
+  String? value;
   final bool isComment;
   final bool isBlank;
 
@@ -14,9 +14,13 @@ class EnvEntry {
   });
 
   String toOutputLine({bool hideValues = false}) {
-    if (isBlank) return '';
-    if (isComment) return rawLine;
-    if (hideValues) return '$key=';
-    return '$key=$value';
+    if (isBlank || isComment || key == null) return rawLine;
+    if (hideValues) {
+      final eqIndex = rawLine.indexOf('=');
+      if (eqIndex >= 0) {
+        return '${rawLine.substring(0, eqIndex + 1)}********';
+      }
+    }
+    return rawLine;
   }
 }
