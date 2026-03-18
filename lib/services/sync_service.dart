@@ -5,7 +5,9 @@ class SyncService {
   /// Copies files in parallel batches for maximum throughput.
   static Future<void> syncItems(
     List<SyncItem> items, {
-    Function(int count, int total, String fileName, int bytesCopied, int totalBytes)? onProgress,
+    Function(SyncItem item, int count, int total, int bytesCopied, int totalBytes)? onProgress,
+    bool Function()? shouldAbort,
+    bool Function()? shouldPause,
     int concurrency = 10,
   }) async {
     final selectedItems = items.where((e) => e.isSelected).toList();
@@ -22,12 +24,21 @@ class SyncService {
 
     // Process in parallel batches
     for (int i = 0; i < selectedItems.length; i += concurrency) {
+      if (shouldAbort != null && shouldAbort()) break;
+
+      while (shouldPause != null && shouldPause()) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (shouldAbort != null && shouldAbort()) break;
+      }
+      if (shouldAbort != null && shouldAbort()) break;
+
       final end = (i + concurrency > selectedItems.length)
           ? selectedItems.length
           : i + concurrency;
       final batch = selectedItems.sublist(i, end);
 
       await Future.wait(batch.map((item) async {
+        if (shouldAbort != null && shouldAbort()) return;
         try {
           await _copyItem(item);
         } catch (_) {
@@ -37,9 +48,9 @@ class SyncService {
         copiedBytes += item.fileSize;
         if (onProgress != null) {
           onProgress(
+            item,
             completedCount,
             selectedItems.length,
-            item.relativePath,
             copiedBytes,
             totalBytes,
           );

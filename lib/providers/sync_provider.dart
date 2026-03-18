@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import '../models/sync_item.dart';
@@ -49,15 +50,27 @@ class SyncState {
   final bool isBackgroundScanning;
   final int scannedItemsCount;
   final int selectedCount;
-  final int totalSelectedSize; // Total bytes of selected files
+  final int totalSelectedSize;
   final int sidebarItemLimit;
   final double syncProgress;
   final String? syncingFileName;
-  final int syncedCount; // Files copied so far
-  final int syncTotalCount; // Total files to copy
-  final int syncedBytes; // Bytes copied so far
-  final int syncTotalBytes; // Total bytes to copy
+  final int syncedCount;
+  final int syncTotalCount;
+  final int syncedBytes;
+  final int syncTotalBytes;
+  final int syncedFilesCount;
+  final int syncedFoldersCount;
+  final int totalFilesToSync;
+  final int totalFoldersToSync;
   final int itemsRevision;
+  final bool isScanPaused;
+  final bool isSyncPaused;
+  final bool isSyncStopped;
+  final bool isBackgroundScanComplete;
+  final int diffCount;
+  final SidebarSortOrder sidebarSortOrder;
+  final String sidebarSearchQuery;
+  final List<SyncItem> sidebarItems;
 
   SyncState({
     this.sourcePath,
@@ -78,15 +91,20 @@ class SyncState {
     this.syncTotalCount = 0,
     this.syncedBytes = 0,
     this.syncTotalBytes = 0,
+    this.syncedFilesCount = 0,
+    this.syncedFoldersCount = 0,
+    this.totalFilesToSync = 0,
+    this.totalFoldersToSync = 0,
+    this.itemsRevision = 0,
+    this.isScanPaused = false,
+    this.isSyncPaused = false,
+    this.isSyncStopped = false,
+    this.isBackgroundScanComplete = false,
+    this.diffCount = 0,
     this.sidebarSearchQuery = '',
     this.sidebarSortOrder = SidebarSortOrder.name,
     this.sidebarItems = const [],
-    this.itemsRevision = 0,
   });
-
-  final SidebarSortOrder sidebarSortOrder;
-  final String sidebarSearchQuery;
-  final List<SyncItem> sidebarItems;
 
   SyncState copyWith({
     String? sourcePath,
@@ -107,10 +125,19 @@ class SyncState {
     int? syncTotalCount,
     int? syncedBytes,
     int? syncTotalBytes,
+    int? syncedFilesCount,
+    int? syncedFoldersCount,
+    int? totalFilesToSync,
+    int? totalFoldersToSync,
+    int? itemsRevision,
+    bool? isScanPaused,
+    bool? isSyncPaused,
+    bool? isSyncStopped,
+    bool? isBackgroundScanComplete,
+    int? diffCount,
     String? sidebarSearchQuery,
     SidebarSortOrder? sidebarSortOrder,
     List<SyncItem>? sidebarItems,
-    int? itemsRevision,
   }) {
     return SyncState(
       sourcePath: sourcePath ?? this.sourcePath,
@@ -131,11 +158,40 @@ class SyncState {
       syncTotalCount: syncTotalCount ?? this.syncTotalCount,
       syncedBytes: syncedBytes ?? this.syncedBytes,
       syncTotalBytes: syncTotalBytes ?? this.syncTotalBytes,
+      syncedFilesCount: syncedFilesCount ?? this.syncedFilesCount,
+      syncedFoldersCount: syncedFoldersCount ?? this.syncedFoldersCount,
+      totalFilesToSync: totalFilesToSync ?? this.totalFilesToSync,
+      totalFoldersToSync: totalFoldersToSync ?? this.totalFoldersToSync,
+      itemsRevision: itemsRevision ?? this.itemsRevision,
+      isScanPaused: isScanPaused ?? this.isScanPaused,
+      isSyncPaused: isSyncPaused ?? this.isSyncPaused,
+      isSyncStopped: isSyncStopped ?? this.isSyncStopped,
+      isBackgroundScanComplete: isBackgroundScanComplete ?? this.isBackgroundScanComplete,
+      diffCount: diffCount ?? this.diffCount,
       sidebarSearchQuery: sidebarSearchQuery ?? this.sidebarSearchQuery,
       sidebarSortOrder: sidebarSortOrder ?? this.sidebarSortOrder,
       sidebarItems: sidebarItems ?? this.sidebarItems,
-      itemsRevision: itemsRevision ?? this.itemsRevision,
     );
+  }
+
+  SyncState updateWithCounts(List<SyncItem> allItems) {
+    final diffItems = allItems.where((e) => e.type == SyncType.file && _isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
+    final selectedItems = allItems.where((e) => e.isSelected && e.type == SyncType.file).toList();
+    
+    return copyWith(
+      diffCount: diffItems.length,
+      selectedCount: selectedItems.length,
+      totalSelectedSize: selectedItems.fold<int>(0, (sum, item) => sum + item.fileSize),
+    );
+  }
+
+  bool _isItemSyncable(SyncItem item, {required bool isTwoWay}) {
+    if (isTwoWay) {
+      return item.status != FileStatus.identical;
+    } else {
+      return item.status == FileStatus.missingInTarget ||
+          item.status == FileStatus.different;
+    }
   }
 }
 
@@ -146,9 +202,14 @@ class SyncNotifier extends Notifier<SyncState> {
   // Persistent hierarchical tree for O(1) updates and instant expansion
   final List<SyncTreeNode> _rootNodes = [];
   final Map<String, SyncTreeNode> _nodesMap = {};
+  Isolate? _activeScanIsolate;
+  Capability? _scanPauseCapability;
 
   // For selection inheritance during background scan
   final Set<String> _selectedPrefixes = {};
+
+  // Scan generation counter to prevent stale callbacks
+  int _scanGeneration = 0;
 
   @override
   SyncState build() {
@@ -195,11 +256,14 @@ class SyncNotifier extends Notifier<SyncState> {
 
     state = state.copyWith(
       sidebarItems: filtered,
+      selectedCount: _allItems.where((e) => e.isSelected && e.type == SyncType.file).length,
+      totalSelectedSize: _allItems.where((e) => e.isSelected && e.type == SyncType.file).fold<int>(0, (sum, item) => sum + item.fileSize),
       itemsRevision: state.itemsRevision + 1,
     );
   }
 
   void toggleItemSelectionByPath(String relativePath, bool selected) {
+    if (state.isSyncing) return;
     final node = _nodesMap[relativePath];
     if (node != null) {
       // Use existing recursive selection logic
@@ -207,7 +271,7 @@ class SyncNotifier extends Notifier<SyncState> {
     } else {
       final prefix = '$relativePath${Platform.pathSeparator}';
       for (final item in _allItems) {
-        if (item.relativePath == relativePath || item.relativePath.startsWith(prefix)) {
+        if ((item.relativePath == relativePath || item.relativePath.startsWith(prefix)) && (selected ? _isItemSyncable(item) : true)) {
           item.isSelected = selected;
         }
       }
@@ -219,8 +283,8 @@ class SyncNotifier extends Notifier<SyncState> {
       }
 
       state = state.copyWith(
-        selectedCount: _allItems.where((e) => e.isSelected).length,
-        totalSelectedSize: _allItems.where((e) => e.isSelected).fold<int>(0, (sum, item) => sum + (item.fileSize)),
+        selectedCount: _allItems.where((e) => e.isSelected && e.type == SyncType.file).length,
+        totalSelectedSize: _allItems.where((e) => e.isSelected && e.type == SyncType.file).fold<int>(0, (sum, item) => sum + (item.fileSize)),
         itemsRevision: state.itemsRevision + 1,
       );
       _rebuildSidebarCache();
@@ -228,6 +292,7 @@ class SyncNotifier extends Notifier<SyncState> {
   }
 
   void toggleAll(bool selected) {
+    if (state.isSyncing) return;
     final query = state.sidebarSearchQuery.toLowerCase();
     int totalCount = state.selectedCount;
     int totalSize = state.totalSelectedSize;
@@ -235,15 +300,19 @@ class SyncNotifier extends Notifier<SyncState> {
     if (query.isEmpty) {
       // 1. Update all items in the flat list
       for (var item in _allItems) {
-        item.isSelected = selected;
+        if (_isItemSyncable(item)) {
+          item.isSelected = selected;
+        } else {
+          item.isSelected = false; // Force false for identical items
+        }
       }
 
       // 2. Clear prefixes if deselecting, or mark root if selecting
       if (selected) {
         _selectedPrefixes.clear();
         _selectedPrefixes.add('');
-        totalCount = _allItems.length;
-        totalSize = _allItems.fold(0, (sum, item) => sum + item.fileSize);
+        totalCount = _allItems.where((e) => e.isSelected && e.type == SyncType.file).length;
+        totalSize = _allItems.where((e) => e.type == SyncType.file && e.isSelected).fold(0, (sum, item) => sum + item.fileSize);
       } else {
         _selectedPrefixes.clear();
         totalCount = 0;
@@ -258,7 +327,7 @@ class SyncNotifier extends Notifier<SyncState> {
         item.relativePath.toLowerCase().contains(query)).toList();
       
       for (var item in filtered) {
-        if (item.isSelected != selected) {
+        if (item.isSelected != selected && (selected ? _isItemSyncable(item) : true)) {
           item.isSelected = selected;
           totalCount += selected ? 1 : -1;
           totalSize += selected ? item.fileSize : -item.fileSize;
@@ -272,13 +341,19 @@ class SyncNotifier extends Notifier<SyncState> {
             final prefix = '${item.relativePath}${Platform.pathSeparator}';
             for (final child in _allItems) {
               if (child.relativePath.startsWith(prefix)) {
-                if (child.isSelected != selected) {
+                if (child.isSelected != selected && (selected ? _isItemSyncable(child) : true)) {
                   child.isSelected = selected;
-                  totalCount += selected ? 1 : -1;
-                  totalSize += selected ? child.fileSize : -child.fileSize;
+                  if (child.type == SyncType.file) {
+                    totalCount += selected ? 1 : -1;
+                    totalSize += selected ? child.fileSize : -child.fileSize;
+                  }
                 }
               }
             }
+          } else {
+            // It's a file
+            totalCount += selected ? 1 : -1;
+            totalSize += selected ? item.fileSize : -item.fileSize;
           }
         }
         
@@ -303,9 +378,10 @@ class SyncNotifier extends Notifier<SyncState> {
 
   void _updateSelectionRecursive(List<SyncTreeNode> nodes, bool selected) {
     for (var node in nodes) {
-      node.isSelected = selected;
+      bool canSelect = node.item == null || _isItemSyncable(node.item!);
+      node.isSelected = selected && canSelect;
       if (node.item != null) {
-        node.item!.isSelected = selected;
+        node.item!.isSelected = selected && canSelect;
       }
       if (node.children.isNotEmpty) {
         _updateSelectionRecursive(node.children, selected);
@@ -328,6 +404,7 @@ class SyncNotifier extends Notifier<SyncState> {
   }
 
   void toggleTwoWaySync(bool value) {
+    if (state.isSyncing) return;
     final expandedPaths = _getExpandedPaths(state.treeNodes);
 
     for (var item in _allItems) {
@@ -338,10 +415,9 @@ class SyncNotifier extends Notifier<SyncState> {
 
     state = state.copyWith(
       isTwoWaySync: value,
-      selectedCount: _allItems.where((e) => e.isSelected).length,
       sidebarItemLimit: 50,
       itemsRevision: state.itemsRevision + 1,
-    );
+    ).updateWithCounts(_allItems);
 
     _rebuildTreeFromAllItems(expandedPaths);
 
@@ -364,11 +440,14 @@ class SyncNotifier extends Notifier<SyncState> {
     final effectiveTwoWay = state.isTwoWaySync;
     if (!effectiveTwoWay && item.status == FileStatus.missingInSource) return;
 
-    final parts = item.relativePath.split(Platform.pathSeparator);
+    // Use p.split for robust platform-independent splitting
+    final parts = p.split(p.normalize(item.relativePath));
     String currentPath = "";
 
     for (int i = 0; i < parts.length; i++) {
       final part = parts[i];
+      if (part == "." || part == "..") continue; // Skip root/relative dots
+
       final isLast = i == parts.length - 1;
       final parentPath = currentPath;
       currentPath = currentPath.isEmpty ? part : p.join(currentPath, part);
@@ -431,13 +510,16 @@ class SyncNotifier extends Notifier<SyncState> {
   }
 
   void reload() {
+    if (state.isSyncing) return;
     _compare();
   }
 
   static const int _initialDepth = 1;
 
-  Future<void> _compare() async {
+  Future<void> _compare({bool keepSyncStats = false}) async {
     if (state.sourcePath == null || state.targetPath == null) return;
+
+    stopScanning();
 
     _allItems.clear();
     _scannedPaths.clear();
@@ -449,8 +531,19 @@ class SyncNotifier extends Notifier<SyncState> {
       isComparing: true,
       scannedItemsCount: 0,
       selectedCount: 0,
+      totalSelectedSize: 0,
       treeNodes: [],
       itemsRevision: state.itemsRevision + 1,
+      syncProgress: keepSyncStats ? state.syncProgress : 0.0,
+      syncedCount: keepSyncStats ? state.syncedCount : 0,
+      syncedBytes: keepSyncStats ? state.syncedBytes : 0,
+      syncingFileName: keepSyncStats ? state.syncingFileName : null,
+      syncedFilesCount: keepSyncStats ? state.syncedFilesCount : 0,
+      syncedFoldersCount: keepSyncStats ? state.syncedFoldersCount : 0,
+      syncTotalCount: keepSyncStats ? state.syncTotalCount : 0,
+      syncTotalBytes: keepSyncStats ? state.syncTotalBytes : 0,
+      isBackgroundScanComplete: false,
+      diffCount: 0,
     );
 
     // 1. Shallow scan for immediate 1-layer display
@@ -462,7 +555,8 @@ class SyncNotifier extends Notifier<SyncState> {
     );
 
     _allItems.addAll(shallowItems);
-    _scannedPaths.addAll(shallowItems.map((e) => e.relativePath));
+    final bool isWindows = Platform.isWindows;
+    _scannedPaths.addAll(shallowItems.map((e) => isWindows ? e.relativePath.toLowerCase() : e.relativePath));
 
     for (final item in shallowItems) {
       _upsertItemToPersistentTree(item);
@@ -475,51 +569,51 @@ class SyncNotifier extends Notifier<SyncState> {
       treeNodes: flatNodes,
       isComparing: false,
       scannedItemsCount: _allItems.length,
-      selectedCount: _allItems.where((e) => e.isSelected).length,
       itemsRevision: state.itemsRevision + 1,
-    );
+    ).updateWithCounts(_allItems);
 
     // 2. Progressive background scan
-    _runBackgroundFullScanProgressive(
-      state.sourcePath!,
-      state.targetPath!,
-      isTwoWay: state.isTwoWaySync,
-    );
-  }
-
-  Future<void> _runBackgroundFullScanProgressive(
-    String sourcePath,
-    String targetPath, {
-    bool isTwoWay = true,
-  }) async {
     state = state.copyWith(isBackgroundScanning: true);
 
     int pendingNewCount = 0;
-    int pendingSelectedCount = 0;
-    int pendingSelectedSize = 0;
     DateTime lastUpdateTime = DateTime.now();
+    final int currentGeneration = ++_scanGeneration;
 
-    await FolderComparisonService.compareFoldersProgressive(
-      sourcePath,
-      targetPath,
-      isTwoWay: isTwoWay,
+    // We don't await here directly to allow immediate control via the UI
+    FolderComparisonService.compareFoldersProgressive(
+      state.sourcePath!,
+      state.targetPath!,
+      isTwoWay: state.isTwoWaySync,
       onBatch: (batch) async {
-        for (final item in batch) {
-          if (_scannedPaths.contains(item.relativePath)) continue;
-          _scannedPaths.add(item.relativePath);
+        // Check cancellation or stale generation
+        if (!state.isBackgroundScanning || currentGeneration != _scanGeneration) return;
 
-          // Selection inheritance: check if any ancestor is selected
-          if (_shouldAutoSelect(item.relativePath)) {
+        final bool isWindows = Platform.isWindows;
+        int processedInThisBatch = 0;
+
+        for (final item in batch) {
+          // Yield to the event loop every 50 items so UI events (button presses) can fire
+          processedInThisBatch++;
+          if (processedInThisBatch % 50 == 0) {
+            await Future.delayed(Duration.zero);
+            // Re-check flags after yielding
+            if (!state.isBackgroundScanning || currentGeneration != _scanGeneration) return;
+          }
+
+          final normalizedPath = p.normalize(item.relativePath);
+          final lookupPath = isWindows ? normalizedPath.toLowerCase() : normalizedPath;
+
+          if (_scannedPaths.contains(lookupPath)) continue;
+          _scannedPaths.add(lookupPath);
+
+          // Selection inheritance: check if any ancestor is selected and item is syncable
+          if (_shouldAutoSelect(item.relativePath) && _isItemSyncable(item)) {
             item.isSelected = true;
           }
 
           _allItems.add(item);
           _upsertItemToPersistentTree(item);
           pendingNewCount++;
-          if (item.isSelected) {
-            pendingSelectedCount++;
-            pendingSelectedSize += item.fileSize;
-          }
         }
 
         // Throttle state updates to every 1.5 seconds — only update COUNTER, not tree
@@ -528,32 +622,75 @@ class SyncNotifier extends Notifier<SyncState> {
           if (pendingNewCount > 0) {
             state = state.copyWith(
               scannedItemsCount: state.scannedItemsCount + pendingNewCount,
-              selectedCount: state.selectedCount + pendingSelectedCount,
-              totalSelectedSize: state.totalSelectedSize + pendingSelectedSize,
               itemsRevision: state.itemsRevision + 1,
-            );
+            ).updateWithCounts(_allItems);
             _rebuildSidebarCache();
             pendingNewCount = 0;
-            pendingSelectedCount = 0;
-            pendingSelectedSize = 0;
           }
           lastUpdateTime = now;
         }
       },
-    );
+      onDone: () {
+        // Skip if this is a stale scan from a previous generation
+        if (currentGeneration != _scanGeneration) return;
+        
+        // Final update
+        state = state.copyWith(
+          scannedItemsCount: state.scannedItemsCount + pendingNewCount,
+          isBackgroundScanning: false,
+          isScanPaused: false,
+          isBackgroundScanComplete: true,
+          itemsRevision: state.itemsRevision + 1,
+        ).updateWithCounts(_allItems);
+        _rebuildSidebarCache();
 
-    // Final update
-    if (pendingNewCount > 0) {
-      state = state.copyWith(
-        scannedItemsCount: state.scannedItemsCount + pendingNewCount,
-        selectedCount: state.selectedCount + pendingSelectedCount,
-        totalSelectedSize: state.totalSelectedSize + pendingSelectedSize,
-        itemsRevision: state.itemsRevision + 1,
-      );
-      _rebuildSidebarCache();
+        _activeScanIsolate = null;
+        _scanPauseCapability = null;
+      },
+    ).then((isolate) {
+      // Store the isolate only if we are still scanning this generation
+      if (state.isBackgroundScanning && currentGeneration == _scanGeneration) {
+        _activeScanIsolate = isolate;
+        // If the user requested pause while the isolate was starting, apply it now
+        if (state.isScanPaused && _scanPauseCapability == null) {
+          _scanPauseCapability = _activeScanIsolate!.pause();
+        }
+      } else {
+        isolate.kill();
+      }
+    });
+  }
+
+  void stopScanning() {
+    if (_activeScanIsolate != null) {
+      _activeScanIsolate!.kill();
+      _activeScanIsolate = null;
     }
+    _scanPauseCapability = null;
+    state = state.copyWith(
+      isBackgroundScanning: false,
+      isScanPaused: false,
+    );
+  }
 
-    state = state.copyWith(isBackgroundScanning: false);
+  void togglePauseScanning() {
+    if (!state.isBackgroundScanning) return;
+
+    if (state.isScanPaused) {
+      // Resume
+      if (_activeScanIsolate != null && _scanPauseCapability != null) {
+        _activeScanIsolate!.resume(_scanPauseCapability!);
+        _scanPauseCapability = null;
+      }
+      state = state.copyWith(isScanPaused: false);
+    } else {
+      // Pause
+      if (_activeScanIsolate != null) {
+        _scanPauseCapability = _activeScanIsolate!.pause();
+      }
+      // We set the state even if the isolate is null to show UI change immediately
+      state = state.copyWith(isScanPaused: true);
+    }
   }
 
   bool _shouldAutoSelect(String relativePath) {
@@ -564,6 +701,10 @@ class SyncNotifier extends Notifier<SyncState> {
       }
     }
     return false;
+  }
+
+  bool _isItemSyncable(SyncItem item) {
+    return state._isItemSyncable(item, isTwoWay: state.isTwoWaySync);
   }
 
 
@@ -627,10 +768,8 @@ class SyncNotifier extends Notifier<SyncState> {
 
       state = state.copyWith(
         scannedItemsCount: _allItems.length,
-        selectedCount: _allItems.where((e) => e.isSelected).length,
-        totalSelectedSize: _allItems.where((e) => e.isSelected).fold<int>(0, (sum, item) => sum + item.fileSize),
         itemsRevision: state.itemsRevision + 1,
-      );
+      ).updateWithCounts(_allItems);
       _rebuildTreeFromAllItems(_getExpandedPaths(state.treeNodes));
       _rebuildSidebarCache();
     } catch (e) {
@@ -671,13 +810,15 @@ class SyncNotifier extends Notifier<SyncState> {
   }
 
   void toggleItemSelection(int index) {
+    if (state.isSyncing) return;
     if (index >= 0 && index < _allItems.length) {
       final item = _allItems[index];
+      if (!item.isSelected && !_isItemSyncable(item)) return; // Prevent selection of identicals
       item.isSelected = !item.isSelected;
 
       state = state.copyWith(
-        selectedCount: _allItems.where((e) => e.isSelected).length,
-        totalSelectedSize: _allItems.where((e) => e.isSelected).fold<int>(0, (sum, item) => sum + item.fileSize),
+        selectedCount: _allItems.where((e) => e.isSelected && e.type == SyncType.file).length,
+        totalSelectedSize: _allItems.where((e) => e.isSelected && e.type == SyncType.file).fold<int>(0, (sum, item) => sum + item.fileSize),
         itemsRevision: state.itemsRevision + 1,
       );
       _rebuildSidebarCache();
@@ -705,6 +846,7 @@ class SyncNotifier extends Notifier<SyncState> {
   }
 
   void toggleNodeSelection(SyncTreeNode node, bool selected) {
+    if (state.isSyncing) return;
     if (node.isSelected == selected) return;
 
     int countDelta = 0;
@@ -712,11 +854,17 @@ class SyncNotifier extends Notifier<SyncState> {
 
     void updateRecursive(SyncTreeNode n) {
       if (n.item != null && n.item!.isSelected != selected) {
-        n.item!.isSelected = selected;
-        countDelta += selected ? 1 : -1;
-        sizeDelta += selected ? n.item!.fileSize : -n.item!.fileSize;
+        if (selected && !_isItemSyncable(n.item!)) {
+          // Skip selecting identical
+        } else {
+          n.item!.isSelected = selected;
+          if (n.item!.type == SyncType.file) {
+            countDelta += selected ? 1 : -1;
+            sizeDelta += selected ? n.item!.fileSize : -n.item!.fileSize;
+          }
+        }
       }
-      n.isSelected = selected;
+      n.isSelected = selected && (n.item == null || _isItemSyncable(n.item!));
       for (var child in n.children) {
         updateRecursive(child);
       }
@@ -732,9 +880,15 @@ class SyncNotifier extends Notifier<SyncState> {
       if (item.relativePath.startsWith(prefix) && item.isSelected != selected) {
         // Find if this item is ALREADY covered by tree recursion
         if (!_nodesMap.containsKey(item.relativePath)) {
-           item.isSelected = selected;
-           countDelta += selected ? 1 : -1;
-           sizeDelta += selected ? item.fileSize : -item.fileSize;
+           if (selected && !_isItemSyncable(item)) {
+             // Skip
+           } else {
+             item.isSelected = selected;
+             if (item.type == SyncType.file) {
+               countDelta += selected ? 1 : -1;
+               sizeDelta += selected ? item.fileSize : -item.fileSize;
+             }
+           }
         }
       }
     }
@@ -755,9 +909,10 @@ class SyncNotifier extends Notifier<SyncState> {
   }
 
   void _setSelectionRecursive(SyncTreeNode node, bool selected) {
-    node.isSelected = selected;
+    bool canSelect = node.item == null || _isItemSyncable(node.item!);
+    node.isSelected = selected && canSelect;
     if (node.item != null) {
-      node.item!.isSelected = selected;
+      node.item!.isSelected = selected && canSelect;
     }
     for (var child in node.children) {
       _setSelectionRecursive(child, selected);
@@ -790,6 +945,9 @@ class SyncNotifier extends Notifier<SyncState> {
       totalBytes += item.fileSize;
     }
 
+    final filesToSyncCount = itemsToSync.where((e) => e.type == SyncType.file).length;
+    final foldersToSyncCount = itemsToSync.where((e) => e.type == SyncType.directory).length;
+
     state = state.copyWith(
       isSyncing: true,
       syncProgress: 0.0,
@@ -798,21 +956,40 @@ class SyncNotifier extends Notifier<SyncState> {
       syncTotalCount: itemsToSync.length,
       syncedBytes: 0,
       syncTotalBytes: totalBytes,
+      syncedFilesCount: 0,
+      syncedFoldersCount: 0,
+      totalFilesToSync: filesToSyncCount,
+      totalFoldersToSync: foldersToSyncCount,
+      isSyncStopped: false,
+      isSyncPaused: false,
     );
 
     DateTime lastUpdate = DateTime.now();
 
+    int filesDone = 0;
+    int foldersDone = 0;
+
     await SyncService.syncItems(
       itemsToSync,
-      onProgress: (count, total, fileName, bytesCopied, totalB) {
+      shouldAbort: () => state.isSyncStopped,
+      shouldPause: () => state.isSyncPaused,
+      onProgress: (item, count, total, bytesCopied, totalB) {
+        if (item.type == SyncType.file) {
+          filesDone++;
+        } else {
+          foldersDone++;
+        }
+
         final now = DateTime.now();
         // Throttle updates to 100ms to prevent UI lag
         if (now.difference(lastUpdate).inMilliseconds > 100 || count == total) {
           state = state.copyWith(
             syncProgress: count / total,
-            syncingFileName: fileName,
+            syncingFileName: item.relativePath,
             syncedCount: count,
             syncedBytes: bytesCopied,
+            syncedFilesCount: filesDone,
+            syncedFoldersCount: foldersDone,
           );
           lastUpdate = now;
         }
@@ -821,10 +998,35 @@ class SyncNotifier extends Notifier<SyncState> {
 
     state = state.copyWith(
       isSyncing: false,
-      syncProgress: 1.0,
+      syncProgress: state.isSyncStopped ? state.syncProgress : 1.0,
+      syncingFileName: null,
+      isSyncPaused: false,
+      isSyncStopped: false,
+      syncedFilesCount: filesDone,
+      syncedFoldersCount: foldersDone,
+    );
+    await _compare(keepSyncStats: true);
+  }
+
+  void togglePauseSyncing() {
+    state = state.copyWith(isSyncPaused: !state.isSyncPaused);
+  }
+
+  void stopSyncing() {
+    state = state.copyWith(isSyncStopped: true, isSyncPaused: false);
+  }
+
+  void clearSyncProgress() {
+    state = state.copyWith(
+      syncProgress: 0.0,
+      syncedCount: 0,
+      syncTotalCount: 0,
+      syncedBytes: 0,
+      syncTotalBytes: 0,
+      syncedFilesCount: 0,
+      syncedFoldersCount: 0,
       syncingFileName: null,
     );
-    await _compare();
   }
 }
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:isolate';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import '../models/sync_item.dart';
 
@@ -116,9 +117,11 @@ class FolderComparisonService {
 
   /// Recursive comparison with progressive updates.
   /// Uses a separate Isolate to stream results back in batches.
-  static Future<void> compareFoldersProgressive(
+  static Future<Isolate> compareFoldersProgressive(
       String sourcePath, String targetPath,
-      {required Function(List<SyncItem> items) onBatch, bool isTwoWay = true}) async {
+      {required Future<void> Function(List<SyncItem> items) onBatch,
+      required VoidCallback onDone,
+      bool isTwoWay = true}) async {
     final receivePort = ReceivePort();
     
     final isolate = await Isolate.spawn(_scanIsolateEntry, {
@@ -128,19 +131,35 @@ class FolderComparisonService {
       'isTwoWay': isTwoWay,
     });
 
+    _listenToIsolate(receivePort, isolate, onBatch, onDone);
+
+    return isolate;
+  }
+
+  static void _listenToIsolate(ReceivePort receivePort, Isolate isolate,
+      Future<void> Function(List<SyncItem> items) onBatch, VoidCallback onDone) async {
+    bool onDoneCalled = false;
     try {
       await for (var message in receivePort) {
         if (message is List<SyncItem>) {
-          onBatch(message);
+          await onBatch(message);
         } else if (message == 'done') {
+          onDone();
+          onDoneCalled = true;
           break;
         } else if (message is String && message.startsWith('error:')) {
+          // You might want to handle errors specifically, but for now just complete the scan
+          onDone();
+          onDoneCalled = true;
           break;
         }
       }
+    } catch (_) {
     } finally {
+      if (!onDoneCalled) {
+        onDone();
+      }
       receivePort.close();
-      isolate.kill();
     }
   }
 
@@ -152,6 +171,7 @@ class FolderComparisonService {
 
     try {
       final Set<String> processedRelativePaths = {};
+      final Set<String> processedRelativePathsLower = {};
       
       // 1. Scan Source
       await _scanWork(
@@ -160,6 +180,7 @@ class FolderComparisonService {
         isSourceScan: true,
         sendPort: sendPort,
         processedPaths: processedRelativePaths,
+        processedPathsLower: processedRelativePathsLower,
       );
 
       // 2. Scan Target for missing items (if Two-Way)
@@ -170,6 +191,7 @@ class FolderComparisonService {
           isSourceScan: false,
           sendPort: sendPort,
           processedPaths: processedRelativePaths,
+          processedPathsLower: processedRelativePathsLower,
         );
       }
       
@@ -185,6 +207,7 @@ class FolderComparisonService {
     required bool isSourceScan,
     required SendPort sendPort,
     required Set<String> processedPaths,
+    required Set<String> processedPathsLower,
   }) async {
     final dir = Directory(rootPath);
     if (!dir.existsSync()) return;
@@ -194,22 +217,29 @@ class FolderComparisonService {
 
     // We use BFS/Manual recursion instead of recursive: true to catch errors per folder
     final queue = <Directory>[dir];
+    final bool isWindows = Platform.isWindows;
 
     while (queue.isNotEmpty) {
       final currentDir = queue.removeAt(0);
       
       try {
-        final List<FileSystemEntity> entities = currentDir.listSync(recursive: false);
+        final List<FileSystemEntity> entities = currentDir.listSync(recursive: false, followLinks: false);
         for (final entity in entities) {
-          final relativePath = p.relative(entity.path, from: rootPath);
+          final relativePath = p.normalize(p.relative(entity.path, from: rootPath));
+          final lookupPath = isWindows ? relativePath.toLowerCase() : relativePath;
           
-          if (!isSourceScan && processedPaths.contains(relativePath)) {
-            // If scanning target, skip if already processed in source scan
-            if (entity is Directory) queue.add(entity); // But still explore subdirs
-            continue;
+          if (!isSourceScan) {
+            if (isWindows ? processedPathsLower.contains(lookupPath) : processedPaths.contains(relativePath)) {
+              // Skip if already processed in source scan
+              if (entity is Directory) queue.add(entity);
+              continue;
+            }
           }
 
-          if (isSourceScan) processedPaths.add(relativePath);
+          if (isSourceScan) {
+            processedPaths.add(relativePath);
+            if (isWindows) processedPathsLower.add(lookupPath);
+          }
 
           final otherEntityPath = p.join(otherRootPath, relativePath);
 
@@ -288,11 +318,15 @@ class FolderComparisonService {
           if (currentBatch.length >= batchSize) {
             sendPort.send(List<SyncItem>.from(currentBatch));
             currentBatch.clear();
+            // Yield to allow the main isolate to process batches
+            await Future.delayed(Duration.zero);
           }
         }
       } catch (e) {
         // Skip restricted / error folders
       }
+      // Yield periodically during deep scans
+      await Future.delayed(Duration.zero);
     }
 
     if (currentBatch.isNotEmpty) {
@@ -347,7 +381,7 @@ class FolderComparisonService {
       try {
         final entities = await sourceSubDir.list(recursive: false).toList();
         for (var entity in entities) {
-          final relativePath = p.relative(entity.path, from: sourcePath);
+          final relativePath = p.normalize(p.relative(entity.path, from: sourcePath));
           final targetEntityPath = p.join(targetPath, relativePath);
           processedRelativePaths.add(relativePath);
 
@@ -409,8 +443,14 @@ class FolderComparisonService {
     required int maxDepth,
     required bool isSource,
   }) async {
+    final bool isWindows = Platform.isWindows;
     // Queue holds (directory, currentDepth)
     final queue = <(Directory, int)>[(rootDir, 0)];
+    
+    // We need a secondary set for case-insensitive lookup on Windows
+    final Set<String> processedRelativePathsLower = isWindows 
+        ? processedRelativePaths.map((e) => e.toLowerCase()).toSet() 
+        : {};
 
     while (queue.isNotEmpty) {
       final (dir, depth) = queue.removeAt(0);
@@ -419,11 +459,13 @@ class FolderComparisonService {
       try {
         final entities = await dir.list(recursive: false).toList();
         for (var entity in entities) {
-          final relativePath = p.relative(entity.path, from: rootPath);
+          final relativePath = p.normalize(p.relative(entity.path, from: rootPath));
+          final lookupPath = isWindows ? relativePath.toLowerCase() : relativePath;
 
           if (isSource) {
             final otherEntityPath = p.join(otherRootPath, relativePath);
             processedRelativePaths.add(relativePath);
+            if (isWindows) processedRelativePathsLower.add(lookupPath);
 
             if (entity is File) {
               items.add(await _compareFileEntity(
@@ -435,7 +477,11 @@ class FolderComparisonService {
             }
           } else {
             // Target scan — only add items not already processed
-            if (processedRelativePaths.contains(relativePath)) {
+            final alreadyProcessed = isWindows 
+                ? processedRelativePathsLower.contains(lookupPath)
+                : processedRelativePaths.contains(relativePath);
+
+            if (alreadyProcessed) {
               if (entity is Directory) {
                 queue.add((entity, depth + 1));
               }

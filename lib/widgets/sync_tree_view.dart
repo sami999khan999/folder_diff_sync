@@ -11,6 +11,7 @@ class SyncTreeView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final treeNodes = ref.watch(syncProvider.select((s) => s.treeNodes));
+    final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
 
     if (treeNodes.isEmpty) {
       final syncState = ref.watch(syncProvider);
@@ -32,7 +33,11 @@ class SyncTreeView extends ConsumerWidget {
       itemCount: treeNodes.length,
       itemBuilder: (context, index) {
         final node = treeNodes[index];
-        return _TreeNodeWidget(node: node, key: ValueKey(node.relativePath));
+        return _TreeNodeWidget(
+          node: node,
+          disabled: isSyncing,
+          key: ValueKey(node.relativePath),
+        );
       },
     );
   }
@@ -40,9 +45,11 @@ class SyncTreeView extends ConsumerWidget {
 
 class _TreeNodeWidget extends ConsumerStatefulWidget {
   final SyncTreeNode node;
+  final bool disabled;
 
   const _TreeNodeWidget({
     required this.node,
+    this.disabled = false,
     super.key,
   });
 
@@ -71,7 +78,7 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
           child: InkWell(
             onTap: widget.node.isDirectory
                 ? () => notifier.expandAndLoadNode(widget.node)
-                : () => notifier.toggleNodeSelection(widget.node, !widget.node.isSelected),
+                : (widget.disabled || !widget.node.needsSync ? null : () => notifier.toggleNodeSelection(widget.node, !widget.node.isSelected)),
             hoverColor: Colors.transparent,
             splashColor: hoverTint.withValues(alpha: 0.1),
             highlightColor: Colors.transparent,
@@ -106,6 +113,7 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                   const SizedBox(width: 8),
                   _CustomCheckbox(
                     value: widget.node.isSelected,
+                    disabled: widget.disabled || !widget.node.needsSync,
                     onChanged: (val) => notifier.toggleNodeSelection(widget.node, val),
                   ),
                   const SizedBox(width: 12),
@@ -199,14 +207,19 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
 
 class _CustomCheckbox extends StatelessWidget {
   final bool value;
+  final bool disabled;
   final Function(bool) onChanged;
 
-  const _CustomCheckbox({required this.value, required this.onChanged});
+  const _CustomCheckbox({
+    required this.value,
+    required this.onChanged,
+    this.disabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => onChanged(!value),
+      onTap: disabled ? null : () => onChanged(!value),
       hoverColor: Colors.white.withValues(alpha: 0.05),
       highlightColor: Colors.white.withValues(alpha: 0.02),
       child: AnimatedContainer(
@@ -214,10 +227,14 @@ class _CustomCheckbox extends StatelessWidget {
         width: 18,
         height: 18,
         decoration: BoxDecoration(
-          color: value ? Colors.blueAccent : Colors.transparent,
+          color: value 
+              ? (disabled ? Colors.blueAccent.withValues(alpha: 0.2) : Colors.blueAccent) 
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: value ? Colors.blueAccent : Colors.white.withValues(alpha: 0.2),
+            color: value 
+                ? (disabled ? Colors.blueAccent.withValues(alpha: 0.2) : Colors.blueAccent) 
+                : Colors.white.withValues(alpha: disabled ? 0.05 : 0.2),
             width: 1.5,
           ),
         ),

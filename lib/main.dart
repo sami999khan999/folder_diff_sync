@@ -106,7 +106,7 @@ class SelectionScreen extends ConsumerWidget {
             ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
             Row(
               children: [
-                Image.asset('assets/icon.png', width: 44, height: 44),
+                Image.asset('assets/logo.png', width: 44, height: 44),
                 const SizedBox(width: 16),
                 const Text(
                   'Folder Diff Sync',
@@ -410,27 +410,7 @@ class _LeftSidebar extends ConsumerWidget {
   Widget _buildLogo() {
     return Row(
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Colors.blueAccent, Colors.cyanAccent],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blueAccent.withValues(alpha: 0.3),
-                blurRadius: 15,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: const Icon(
-            LucideIcons.refreshCw,
-            color: Colors.white,
-            size: 20,
-          ),
-        ),
+        Image.asset('assets/logo.png', width: 24, height: 24),
         const SizedBox(width: 16),
         ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
@@ -494,7 +474,7 @@ class _MiddleSection extends ConsumerWidget {
                       const SizedBox(width: 12),
                       IconButton(
                             onPressed:
-                                state.isComparing || state.isBackgroundScanning
+                                state.isComparing || state.isBackgroundScanning || state.isSyncing
                                 ? null
                                 : () => notifier.reload(),
                             icon: Icon(
@@ -502,7 +482,7 @@ class _MiddleSection extends ConsumerWidget {
                               size: 16,
                               color:
                                   state.isComparing ||
-                                      state.isBackgroundScanning
+                                      state.isBackgroundScanning || state.isSyncing
                                   ? Colors.grey
                                   : Colors.blueAccent,
                             ),
@@ -516,37 +496,47 @@ class _MiddleSection extends ConsumerWidget {
                           )
                           .animate(
                             target:
-                                state.isComparing || state.isBackgroundScanning
+                                state.isComparing || state.isBackgroundScanning || state.isSyncing
                                 ? 1
                                 : 0,
                           )
                           .shimmer(),
                     ],
                   ),
-                  Row(
+                   Row(
                     children: [
+                      if (state.isBackgroundScanComplete && !state.isBackgroundScanning)
+                        const Icon(LucideIcons.checkCircle2, color: Colors.greenAccent, size: 14)
+                      else
+                        const SizedBox.shrink(),
+                      if (state.isBackgroundScanComplete && !state.isBackgroundScanning)
+                        const SizedBox(width: 8),
                       Text(
                         state.isBackgroundScanning
-                            ? 'Discovering files...'
-                            : 'Select items to include in sync',
+                            ? 'Checking for differences...'
+                            : (state.isBackgroundScanComplete 
+                                ? (state.diffCount == 0 
+                                    ? 'No differences found. Folders are in sync.' 
+                                    : 'Scan complete. Found ${state.diffCount} differences.')
+                                : 'Select items to include in sync'),
                         style: TextStyle(
                           color: state.isBackgroundScanning
                               ? Colors.blueAccent.withValues(alpha: 0.7)
-                              : Colors.grey,
+                              : (state.isBackgroundScanComplete ? Colors.greenAccent.withValues(alpha: 0.8) : Colors.grey),
                           fontSize: 13,
-                          fontWeight: state.isBackgroundScanning
+                          fontWeight: state.isBackgroundScanning || state.isBackgroundScanComplete
                               ? FontWeight.bold
                               : FontWeight.normal,
                         ),
                       ),
                       if (state.isBackgroundScanning) ...[
                         const SizedBox(width: 8),
-                        SizedBox(
-                          width: 10,
-                          height: 10,
+                        const SizedBox(
+                          width: 12,
+                          height: 12,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.blueAccent.withValues(alpha: 0.5),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
                           ),
                         ),
                       ],
@@ -559,12 +549,14 @@ class _MiddleSection extends ConsumerWidget {
                 onPressed: () => notifier.toggleAll(true),
                 icon: LucideIcons.checkCheck,
                 label: 'All',
+                disabled: state.isSyncing,
               ),
               const SizedBox(width: 8),
               _buildActionButton(
                 onPressed: () => notifier.toggleAll(false),
                 icon: LucideIcons.circle,
                 label: 'None',
+                disabled: state.isSyncing,
               ),
             ],
           ),
@@ -588,18 +580,23 @@ class _MiddleSection extends ConsumerWidget {
     required VoidCallback onPressed,
     required IconData icon,
     required String label,
+    bool disabled = false,
   }) {
     return TextButton.icon(
-      onPressed: onPressed,
+      onPressed: disabled ? null : onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: Colors.grey,
+        foregroundColor: disabled ? Colors.grey.withValues(alpha: 0.3) : Colors.grey,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       icon: Icon(icon, size: 14),
       label: Text(
         label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: disabled ? Colors.white.withValues(alpha: 0.2) : null,
+        ),
       ),
     );
   }
@@ -733,7 +730,9 @@ class _RightSidebar extends ConsumerWidget {
                       Icon(LucideIcons.file, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
                       const SizedBox(width: 6),
                       Text(
-                        '${state.selectedCount} files',
+                        state.syncProgress >= 1.0 && state.selectedCount == 0 && !state.isSyncing
+                            ? '${state.syncedFilesCount} files synced'
+                            : '${state.selectedCount} files',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.white.withValues(alpha: 0.5),
@@ -743,7 +742,9 @@ class _RightSidebar extends ConsumerWidget {
                       Icon(LucideIcons.hardDrive, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
                       const SizedBox(width: 6),
                       Text(
-                        _formatBytes(state.totalSelectedSize),
+                        state.syncProgress >= 1.0 && state.selectedCount == 0 && !state.isSyncing
+                            ? _formatBytes(state.syncTotalBytes)
+                            : _formatBytes(state.totalSelectedSize),
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.white.withValues(alpha: 0.5),
@@ -832,6 +833,8 @@ class _RightSidebar extends ConsumerWidget {
   }
 
   Widget _buildProgressFooter(SyncState state, SyncNotifier notifier) {
+    final bool isDone = state.syncProgress >= 1.0 && !state.isSyncing;
+
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -850,33 +853,65 @@ class _RightSidebar extends ConsumerWidget {
       child: Column(
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                state.isSyncing ? 'Synchronizing...' : 'Completed',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  letterSpacing: 2,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isDone 
+                        ? 'SYNC REPORT: ${state.syncedFilesCount}F, ${state.syncedFoldersCount} Dir' 
+                        : (state.isSyncing ? 'Synchronizing...' : 'Sync Complete'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    if (isDone)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Total data synced: ${_formatBytes(state.syncTotalBytes)}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              const Spacer(),
-              Text(
-                '${(state.syncProgress * 100).toStringAsFixed(0)}%',
-                style: const TextStyle(
-                  color: Colors.blueAccent,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+              if (isDone)
+                TextButton(
+                  onPressed: () => notifier.clearSyncProgress(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.blueAccent,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
+                  ),
+                  child: const Text('Dismiss', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                )
+              else
+                Text(
+                  '${(state.syncProgress * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(
+                    color: Colors.blueAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
             ],
           ),
-          if (state.isSyncing) ...[
+          if (!isDone) ...[
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${state.syncedCount} / ${state.syncTotalCount} files synced',
+                  '${state.syncedCount} / ${state.syncTotalCount} items synced',
                   style: TextStyle(
                     fontSize: 10,
                     color: Colors.white.withValues(alpha: 0.4),
@@ -892,42 +927,43 @@ class _RightSidebar extends ConsumerWidget {
               ],
             ),
           ],
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return Stack(
-                children: [
-                  Container(
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: 300.ms,
-                    height: 6,
-                    width: constraints.maxWidth * state.syncProgress,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Colors.blueAccent, Colors.cyanAccent],
+          if (!isDone) ...[
+            const SizedBox(height: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return Stack(
+                  children: [
+                    Container(
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blueAccent.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
-                  ),
-                ],
-              );
-            },
-          ),
-          if (state.syncingFileName != null &&
-              state.syncingFileName!.isNotEmpty)
+                    AnimatedContainer(
+                      duration: 300.ms,
+                      height: 6,
+                      width: constraints.maxWidth * state.syncProgress,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Colors.blueAccent, Colors.cyanAccent],
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blueAccent.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+          if (state.isSyncing && state.syncingFileName != null && state.syncingFileName!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text(
@@ -1001,6 +1037,8 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
 
   @override
   Widget build(BuildContext context) {
+    final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -1064,11 +1102,15 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
               scale: 0.8,
               child: Checkbox(
                 value: widget.item.isSelected,
-                activeColor: Colors.blueAccent,
+                activeColor: (isSyncing || widget.item.status == FileStatus.identical) 
+                    ? Colors.blueAccent.withValues(alpha: 0.3) 
+                    : Colors.blueAccent,
                 checkColor: Colors.white,
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                side: BorderSide(color: Colors.white.withValues(alpha: (isSyncing || widget.item.status == FileStatus.identical) ? 0.05 : 0.2)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                onChanged: (val) => ref.read(syncProvider.notifier).toggleItemSelectionByPath(widget.item.relativePath, val ?? false),
+                onChanged: (isSyncing || widget.item.status == FileStatus.identical) 
+                    ? null 
+                    : (val) => ref.read(syncProvider.notifier).toggleItemSelectionByPath(widget.item.relativePath, val ?? false),
               ),
             ),
           ],
