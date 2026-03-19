@@ -131,7 +131,7 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                             widget.node.name,
                             style: TextStyle(
                               fontWeight: widget.node.needsSync ? FontWeight.bold : FontWeight.normal,
-                              color: widget.node.needsSync ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                              color: widget.node.needsSync ? Colors.blueGrey.shade100 : Colors.blueGrey.shade100.withValues(alpha: 0.5),
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),

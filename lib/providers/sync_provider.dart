@@ -984,7 +984,7 @@ class SyncNotifier extends Notifier<SyncState> {
         // Throttle updates to 100ms to prevent UI lag
         if (now.difference(lastUpdate).inMilliseconds > 100 || count == total) {
           state = state.copyWith(
-            syncProgress: count / total,
+            syncProgress: totalB > 0 ? bytesCopied / totalB : (total > 0 ? count / total : 1.0),
             syncingFileName: item.relativePath,
             syncedCount: count,
             syncedBytes: bytesCopied,

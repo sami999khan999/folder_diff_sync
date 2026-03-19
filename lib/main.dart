@@ -629,7 +629,7 @@ class _RightSidebar extends ConsumerWidget {
         children: [
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -752,7 +752,7 @@ class _RightSidebar extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: selItems.isEmpty
                         ? Center(
@@ -811,7 +811,7 @@ class _RightSidebar extends ConsumerWidget {
         onTap: () => ref.read(syncProvider.notifier).loadMoreSidebarItems(),
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: Colors.blueAccent.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8),
@@ -1044,7 +1044,7 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: 200.ms,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
           color: _isHovered
               ? Colors.white.withValues(alpha: 0.03)

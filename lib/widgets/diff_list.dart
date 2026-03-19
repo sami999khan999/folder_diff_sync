@@ -204,7 +204,7 @@ class _DiffItemTileState extends State<_DiffItemTile> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: 200.ms,
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: _isHovered 
               ? statusColor.withValues(alpha: 0.08) 
@@ -224,11 +224,11 @@ class _DiffItemTileState extends State<_DiffItemTile> {
           splashColor: statusColor.withValues(alpha: 0.1),
           highlightColor: Colors.transparent,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: (widget.item.type == SyncType.directory ? Colors.grey : statusColor).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -248,7 +248,7 @@ class _DiffItemTileState extends State<_DiffItemTile> {
                         widget.item.name,
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         widget.item.relativePath,
                         style: TextStyle(fontSize: 11, color: Colors.grey.withValues(alpha: 0.5)),
@@ -280,7 +280,7 @@ class _DiffItemTileState extends State<_DiffItemTile> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     SizedBox(
                       height: 20,
                       width: 20,
