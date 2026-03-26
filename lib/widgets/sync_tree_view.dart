@@ -86,12 +86,12 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
             child: Container(
               decoration: BoxDecoration(
                 color: _isHovered
-                    ? hoverTint.withValues(alpha: 0.08)
-                    : (widget.node.needsSync ? Colors.blueAccent.withValues(alpha: 0.03) : Colors.transparent),
+                    ? hoverTint.withValues(alpha: 0.05)
+                    : (widget.node.needsSync ? hoverTint.withValues(alpha: 0.02) : Colors.transparent),
                 border: Border(
                   left: widget.node.needsSync && widget.node.isSelected
-                      ? BorderSide(color: statusColor, width: 2)
-                      : const BorderSide(color: Colors.transparent, width: 2),
+                      ? BorderSide(color: statusColor, width: 3)
+                      : const BorderSide(color: Colors.transparent, width: 3),
                 ),
               ),
               padding: EdgeInsets.only(
@@ -109,8 +109,8 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                       top: 0,
                       bottom: 0,
                       child: Container(
-                        width: 1.5,
-                        color: Colors.white.withValues(alpha: 0.08),
+                        width: 1,
+                        color: Colors.white.withValues(alpha: 0.05),
                       ),
                     ),
                   Row(
@@ -266,7 +266,7 @@ class _CustomCheckbox extends StatelessWidget {
           ),
         ),
         child: value
-            ? const Icon(Icons.check, size: 12, color: Colors.white)
+            ? Icon(Icons.check, size: 12, color: value ? Colors.white : Colors.transparent)
             : null,
       ),
     );
@@ -342,21 +342,21 @@ Widget _buildStatusBadge(FileStatus status) {
   }
 
   return Container(
-    margin: const EdgeInsets.only(left: 8),
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    margin: const EdgeInsets.only(left: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
+      color: color.withValues(alpha: 0.06),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: color.withValues(alpha: 0.15)),
     ),
     child: Text(
       label.toUpperCase(),
       style: TextStyle(
         fontFamily: 'Fredoka',
-        color: color,
+        color: color.withValues(alpha: 0.8),
         fontSize: 9,
         fontWeight: FontWeight.bold,
-        letterSpacing: 0.5,
+        letterSpacing: 1,
       ),
     ),
   );

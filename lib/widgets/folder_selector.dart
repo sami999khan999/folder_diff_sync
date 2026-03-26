@@ -29,12 +29,13 @@ class FolderSelectorRow extends ConsumerWidget {
         const SizedBox(height: 12),
         Center(
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: Colors.white.withValues(alpha: 0.04),
               shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             ),
-            child: const Icon(LucideIcons.arrowDown, color: Colors.grey, size: 16),
+            child: const Icon(LucideIcons.chevronDown, color: Colors.blueAccent, size: 16),
           ),
         ),
         const SizedBox(height: 12),
@@ -155,7 +156,7 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.05),
+                        fillColor: Colors.black.withValues(alpha: 0.1),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -166,7 +167,7 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: widget.color.withValues(alpha: 0.5)),
+                          borderSide: BorderSide(color: widget.color.withValues(alpha: 0.3), width: 1.5),
                         ),
                       ),
                       onSubmitted: (val) {
@@ -186,9 +187,16 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: widget.color.withValues(alpha: 0.1),
+                        color: widget.color.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: widget.color.withValues(alpha: 0.3)),
+                        border: Border.all(color: widget.color.withValues(alpha: 0.2)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: widget.color.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Icon(LucideIcons.folderSearch, size: 18, color: widget.color),
                     ),

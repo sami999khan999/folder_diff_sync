@@ -120,12 +120,12 @@ class SelectionScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-                  'Choose your synchronization method to begin.',
-                  style: TextStyle(
-                    color: Colors.grey.withValues(alpha: 0.7),
-                    fontSize: 16,
-                  ),
-                ),
+              'Choose your synchronization method to begin.',
+              style: TextStyle(
+                color: Colors.grey.withValues(alpha: 0.7),
+                fontSize: 16,
+              ),
+            ),
             const SizedBox(height: 48),
             Row(
               children: [
@@ -301,6 +301,32 @@ class FolderSyncView extends ConsumerWidget {
   }
 }
 
+Widget _buildSectionHeader(String title) {
+  return Row(
+    children: [
+      Container(
+        width: 3,
+        height: 12,
+        decoration: BoxDecoration(
+          color: Colors.blueAccent,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: const TextStyle(
+          fontFamily: 'Fredoka',
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 2,
+          color: Colors.grey,
+        ),
+      ),
+    ],
+  );
+}
+
 class _LeftSidebar extends ConsumerWidget {
   const _LeftSidebar();
 
@@ -313,14 +339,7 @@ class _LeftSidebar extends ConsumerWidget {
         border: Border(
           right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF14142B).withValues(alpha: 0.9),
-            const Color(0xFF0F0F0F).withValues(alpha: 1.0),
-          ],
-        ),
+        color: const Color(0xFF0F0F0F),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Column(
@@ -341,15 +360,7 @@ class _LeftSidebar extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 48),
-          const Text(
-            'FOLDERS',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 2,
-              color: Colors.grey,
-            ),
-          ),
+          _buildSectionHeader('FOLDERS'),
           const SizedBox(height: 16),
           const FolderSelectorRow(),
           const SizedBox(height: 32),
@@ -362,28 +373,37 @@ class _LeftSidebar extends ConsumerWidget {
               final isTwoWay = state.isTwoWaySync;
               final isSyncing = state.isSyncing;
               final selectedCount = state.selectedCount;
-              
+
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // 2-Way Sync Toggle
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.03),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.05),
+                      ),
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: (isTwoWay ? Colors.purpleAccent : Colors.grey).withValues(alpha: 0.1),
+                            color:
+                                (isTwoWay ? Colors.purpleAccent : Colors.grey)
+                                    .withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
-                            isTwoWay ? LucideIcons.repeat : LucideIcons.arrowRight,
+                            isTwoWay
+                                ? LucideIcons.repeat
+                                : LucideIcons.arrowRight,
                             size: 16,
                             color: isTwoWay ? Colors.purpleAccent : Colors.grey,
                           ),
@@ -415,17 +435,23 @@ class _LeftSidebar extends ConsumerWidget {
                         ),
                         Switch(
                           value: isTwoWay,
-                          onChanged: isSyncing ? null : (val) => notifier.toggleTwoWaySync(val),
-                          mouseCursor: isSyncing ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
+                          onChanged: isSyncing
+                              ? null
+                              : (val) => notifier.toggleTwoWaySync(val),
+                          mouseCursor: isSyncing
+                              ? SystemMouseCursors.forbidden
+                              : SystemMouseCursors.click,
                           activeThumbColor: Colors.purpleAccent,
-                          activeTrackColor: Colors.purpleAccent.withValues(alpha: 0.2),
+                          activeTrackColor: Colors.purpleAccent.withValues(
+                            alpha: 0.2,
+                          ),
                           inactiveThumbColor: Colors.grey,
                           inactiveTrackColor: Colors.white10,
                         ),
                       ],
                     ),
                   ),
-                  
+
                   if (selectedCount > 0 || isSyncing) ...[
                     const SizedBox(height: 16),
                     ElevatedButton(
@@ -433,10 +459,16 @@ class _LeftSidebar extends ConsumerWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.blueAccent.withValues(alpha: 0.3),
-                        disabledForegroundColor: Colors.white.withValues(alpha: 0.5),
+                        disabledBackgroundColor: Colors.blueAccent.withValues(
+                          alpha: 0.3,
+                        ),
+                        disabledForegroundColor: Colors.white.withValues(
+                          alpha: 0.5,
+                        ),
                         minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         elevation: isSyncing ? 0 : 8,
                         shadowColor: Colors.blueAccent.withValues(alpha: 0.5),
                       ),
@@ -449,14 +481,18 @@ class _LeftSidebar extends ConsumerWidget {
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(Colors.white),
+                                valueColor: AlwaysStoppedAnimation(
+                                  Colors.white,
+                                ),
                               ),
                             )
                           else
                             const Icon(LucideIcons.refreshCw, size: 18),
                           const SizedBox(width: 10),
                           Text(
-                            isSyncing ? 'Syncing...' : 'Sync $selectedCount Items',
+                            isSyncing
+                                ? 'Syncing...'
+                                : 'Sync $selectedCount Items',
                             style: const TextStyle(
                               fontFamily: 'Fredoka',
                               fontSize: 14,
@@ -479,18 +515,25 @@ class _LeftSidebar extends ConsumerWidget {
   Widget _buildLogo() {
     return Row(
       children: [
-        Image.asset('assets/logo.png', width: 24, height: 24),
-        const SizedBox(width: 16),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Image.asset('assets/logo.png', width: 22, height: 22),
+        ),
+        const SizedBox(width: 14),
         ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
-            colors: [Colors.white, Colors.grey],
+            colors: [Colors.white, Color(0xFFAAAAAA)],
           ).createShader(bounds),
           child: const Text(
             'Sync Pro',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              letterSpacing: 2,
+              letterSpacing: 1.5,
               height: 1.1,
             ),
           ),
@@ -498,8 +541,6 @@ class _LeftSidebar extends ConsumerWidget {
       ],
     );
   }
-
-
 }
 
 class _MiddleSection extends ConsumerWidget {
@@ -522,28 +563,28 @@ class _MiddleSection extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'STRUCTURE',
-                        style: TextStyle(
-                          fontFamily: 'Fredoka',
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.5,
-                          color: Colors.blueAccent,
-                        ),
-                      ),
+                      _buildSectionHeader('STRUCTURE'),
                       const SizedBox(width: 12),
                       IconButton(
-                        onPressed: state.isComparing || state.isBackgroundScanning || state.isSyncing
+                        onPressed:
+                            state.isComparing ||
+                                state.isBackgroundScanning ||
+                                state.isSyncing
                             ? null
                             : () => notifier.reload(),
-                        mouseCursor: (state.isComparing || state.isBackgroundScanning || state.isSyncing)
+                        mouseCursor:
+                            (state.isComparing ||
+                                state.isBackgroundScanning ||
+                                state.isSyncing)
                             ? SystemMouseCursors.forbidden
                             : SystemMouseCursors.click,
                         icon: Icon(
                           LucideIcons.refreshCw,
                           size: 16,
-                          color: state.isComparing || state.isBackgroundScanning || state.isSyncing
+                          color:
+                              state.isComparing ||
+                                  state.isBackgroundScanning ||
+                                  state.isSyncing
                               ? Colors.grey
                               : Colors.blueAccent,
                         ),
@@ -557,25 +598,31 @@ class _MiddleSection extends ConsumerWidget {
                   ),
                   Row(
                     children: [
-                      if (state.isBackgroundScanComplete && !state.isBackgroundScanning)
-                        const Icon(LucideIcons.checkCircle2, color: Colors.greenAccent, size: 14),
-                      if (state.isBackgroundScanComplete && !state.isBackgroundScanning)
+                      if (state.isBackgroundScanComplete &&
+                          !state.isBackgroundScanning)
+                        const Icon(
+                          LucideIcons.checkCircle2,
+                          color: Colors.greenAccent,
+                          size: 14,
+                        ),
+                      if (state.isBackgroundScanComplete &&
+                          !state.isBackgroundScanning)
                         const SizedBox(width: 8),
                       Text(
                         state.isBackgroundScanning
                             ? 'Checking for differences...'
                             : (state.isBackgroundScanComplete
-                                ? (state.diffCount == 0
-                                    ? 'No differences found. Folders are in sync.'
-                                    : 'Scan complete. Found ${state.diffCount} differences.')
-                                : 'Select items to include in sync'),
+                                  ? (state.diffCount == 0
+                                        ? 'No differences found. Folders are in sync.'
+                                        : 'Scan complete. Found ${state.diffCount} differences.')
+                                  : 'Select items to include in sync'),
                         style: TextStyle(
                           fontFamily: 'Fredoka',
                           color: state.isBackgroundScanning
                               ? Colors.blueAccent.withValues(alpha: 0.7)
                               : (state.isBackgroundScanComplete
-                                  ? Colors.greenAccent.withValues(alpha: 0.8)
-                                  : Colors.grey),
+                                    ? Colors.greenAccent.withValues(alpha: 0.8)
+                                    : Colors.grey),
                           fontSize: 13,
                         ),
                       ),
@@ -624,7 +671,9 @@ class _MiddleSection extends ConsumerWidget {
     return TextButton.icon(
       onPressed: disabled ? null : onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: disabled ? Colors.grey.withValues(alpha: 0.3) : Colors.grey,
+        foregroundColor: disabled
+            ? Colors.grey.withValues(alpha: 0.3)
+            : Colors.grey,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -649,21 +698,35 @@ class _RightSidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(syncProvider.notifier);
     final sidebarItems = ref.watch(syncProvider.select((s) => s.sidebarItems));
-    final sidebarLimit = ref.watch(syncProvider.select((s) => s.sidebarItemLimit));
-    final sidebarSearchQuery = ref.watch(syncProvider.select((s) => s.sidebarSearchQuery));
-    
+    final sidebarLimit = ref.watch(
+      syncProvider.select((s) => s.sidebarItemLimit),
+    );
+    final sidebarSearchQuery = ref.watch(
+      syncProvider.select((s) => s.sidebarSearchQuery),
+    );
+
     final displayedItems = sidebarItems.take(sidebarLimit).toList();
     final hasMore = sidebarItems.length > sidebarLimit;
 
     // These don't change during sync progress, only on major state changes
-    final sidebarSortOrder = ref.watch(syncProvider.select((s) => s.sidebarSortOrder));
-    final selectedCount = ref.watch(syncProvider.select((s) => s.selectedCount));
-    final totalSelectedSize = ref.watch(syncProvider.select((s) => s.totalSelectedSize));
+    final sidebarSortOrder = ref.watch(
+      syncProvider.select((s) => s.sidebarSortOrder),
+    );
+    final selectedCount = ref.watch(
+      syncProvider.select((s) => s.selectedCount),
+    );
+    final totalSelectedSize = ref.watch(
+      syncProvider.select((s) => s.totalSelectedSize),
+    );
     final syncProgress = ref.watch(syncProvider.select((s) => s.syncProgress));
     final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
-    final syncedFilesCount = ref.watch(syncProvider.select((s) => s.syncedFilesCount));
-    final syncTotalBytes = ref.watch(syncProvider.select((s) => s.syncTotalBytes));
-    
+    final syncedFilesCount = ref.watch(
+      syncProvider.select((s) => s.syncedFilesCount),
+    );
+    final syncTotalBytes = ref.watch(
+      syncProvider.select((s) => s.syncTotalBytes),
+    );
+
     // Watch itemsRevision to force rebuild when selection logic clears/rebuilds internal state
     ref.watch(syncProvider.select((s) => s.itemsRevision));
 
@@ -683,40 +746,47 @@ class _RightSidebar extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Row(
-                      children: [
-                         Image.asset('assets/logo.png', width: 20, height: 20),
-                        const SizedBox(width: 10),
-                        const Text(
-                          'TRANSFER QUEUE',
-                          style: TextStyle(
-                            fontFamily: 'Fredoka',
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.5,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildSectionHeader('TRANSFER QUEUE'),
                     const Spacer(),
                     TextButton(
                       onPressed: () => notifier.toggleAll(true),
                       style: TextButton.styleFrom(
                         minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        overlayColor: Colors.blueAccent.withValues(alpha: 0.1),
                       ),
-                      child: const Text('All', style: TextStyle(fontFamily: 'Fredoka', fontSize: 11, color: Colors.blueAccent)),
+                      child: const Text(
+                        'All',
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontSize: 11,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
                     ),
                     TextButton(
                       onPressed: () => notifier.toggleAll(false),
                       style: TextButton.styleFrom(
                         minimumSize: Size.zero,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        overlayColor: Colors.redAccent.withValues(alpha: 0.1),
                       ),
-                      child: const Text('None', style: TextStyle(fontFamily: 'Fredoka', fontSize: 11, color: Colors.redAccent)),
+                      child: const Text(
+                        'None',
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontSize: 11,
+                          color: Colors.redAccent,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -725,22 +795,37 @@ class _RightSidebar extends ConsumerWidget {
                 Container(
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: Colors.white.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Row(
                     children: [
-                      Icon(LucideIcons.search, size: 16, color: Colors.white.withValues(alpha: 0.3)),
+                      Icon(
+                        LucideIcons.search,
+                        size: 16,
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: TextField(
-                          onChanged: (val) => notifier.setSidebarSearchQuery(val),
-                          style: const TextStyle(fontFamily: 'Fredoka', fontSize: 13, color: Colors.white),
+                          onChanged: (val) =>
+                              notifier.setSidebarSearchQuery(val),
+                          style: const TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
                           decoration: InputDecoration(
                             hintText: 'Search in queue...',
-                            hintStyle: TextStyle(fontFamily: 'Fredoka', fontSize: 13, color: Colors.white.withValues(alpha: 0.2)),
+                            hintStyle: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontSize: 13,
+                              color: Colors.white.withValues(alpha: 0.2),
+                            ),
                             border: InputBorder.none,
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
@@ -750,23 +835,54 @@ class _RightSidebar extends ConsumerWidget {
                       if (sidebarSearchQuery.isNotEmpty)
                         GestureDetector(
                           onTap: () => notifier.setSidebarSearchQuery(''),
-                          child: Icon(LucideIcons.x, size: 16, color: Colors.white.withValues(alpha: 0.3)),
+                          child: Icon(
+                            LucideIcons.x,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.3),
+                          ),
                         ),
                       const SizedBox(width: 10),
-                      const VerticalDivider(width: 1, indent: 10, endIndent: 10, color: Colors.white12),
+                      const VerticalDivider(
+                        width: 1,
+                        indent: 10,
+                        endIndent: 10,
+                        color: Colors.white12,
+                      ),
                       const SizedBox(width: 4),
                       PopupMenuButton<SidebarSortOrder>(
                         offset: const Offset(0, 40),
-                        icon: Icon(LucideIcons.listFilter, size: 16, color: Colors.white.withValues(alpha: 0.3)),
+                        icon: Icon(
+                          LucideIcons.listFilter,
+                          size: 16,
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
                         padding: EdgeInsets.zero,
                         tooltip: 'Sort By',
                         color: const Color(0xFF1E1E1E),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        onSelected: (order) => notifier.setSidebarSortOrder(order),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        onSelected: (order) =>
+                            notifier.setSidebarSortOrder(order),
                         itemBuilder: (context) => [
-                          _buildSortItem(SidebarSortOrder.name, 'Name', LucideIcons.type, sidebarSortOrder),
-                          _buildSortItem(SidebarSortOrder.size, 'Size', LucideIcons.hardDrive, sidebarSortOrder),
-                          _buildSortItem(SidebarSortOrder.status, 'Status', LucideIcons.info, sidebarSortOrder),
+                          _buildSortItem(
+                            SidebarSortOrder.name,
+                            'Name',
+                            LucideIcons.type,
+                            sidebarSortOrder,
+                          ),
+                          _buildSortItem(
+                            SidebarSortOrder.size,
+                            'Size',
+                            LucideIcons.hardDrive,
+                            sidebarSortOrder,
+                          ),
+                          _buildSortItem(
+                            SidebarSortOrder.status,
+                            'Status',
+                            LucideIcons.info,
+                            sidebarSortOrder,
+                          ),
                         ],
                       ),
                     ],
@@ -776,7 +892,11 @@ class _RightSidebar extends ConsumerWidget {
                 // Size and count summary
                 Row(
                   children: [
-                    Icon(LucideIcons.file, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
+                    Icon(
+                      LucideIcons.file,
+                      size: 13,
+                      color: Colors.grey.withValues(alpha: 0.6),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       syncProgress >= 1.0 && selectedCount == 0 && !isSyncing
@@ -789,7 +909,11 @@ class _RightSidebar extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Icon(LucideIcons.hardDrive, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
+                    Icon(
+                      LucideIcons.hardDrive,
+                      size: 13,
+                      color: Colors.grey.withValues(alpha: 0.6),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       syncProgress >= 1.0 && selectedCount == 0 && !isSyncing
@@ -836,11 +960,16 @@ class _RightSidebar extends ConsumerWidget {
                             ),
                           )
                         : ListView.separated(
-                            itemCount: displayedItems.length + (hasMore ? 1 : 0),
-                            separatorBuilder: (context, index) => const SizedBox(height: 6),
+                            itemCount:
+                                displayedItems.length + (hasMore ? 1 : 0),
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 6),
                             itemBuilder: (context, index) {
                               if (index == displayedItems.length) {
-                                return _buildLoadMore(ref, sidebarItems.length - sidebarLimit);
+                                return _buildLoadMore(
+                                  ref,
+                                  sidebarItems.length - sidebarLimit,
+                                );
                               }
                               final item = displayedItems[index];
                               return _SyncItemTile(
@@ -855,33 +984,38 @@ class _RightSidebar extends ConsumerWidget {
             ),
           ),
           // Dashboard & Report Section
-          Consumer(builder: (context, ref, _) {
-            final state = ref.watch(syncProvider);
-            final bool showDashboard = state.isSyncing;
-            final bool showReport = state.syncProgress >= 1.0 && !state.isSyncing && state.syncTotalCount > 0;
+          Consumer(
+            builder: (context, ref, _) {
+              final state = ref.watch(syncProvider);
+              final bool showDashboard = state.isSyncing;
+              final bool showReport =
+                  state.syncProgress >= 1.0 &&
+                  !state.isSyncing &&
+                  state.syncTotalCount > 0;
 
-            if (showDashboard) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Divider(height: 1, color: Colors.white10),
-                  _buildSyncDashboard(state, notifier),
-                ],
-              );
-            }
+              if (showDashboard) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Divider(height: 1, color: Colors.white10),
+                    _buildSyncDashboard(state, notifier),
+                  ],
+                );
+              }
 
-            if (showReport) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Divider(height: 1, color: Colors.white10),
-                  _buildSyncReport(state, notifier),
-                ],
-              );
-            }
+              if (showReport) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Divider(height: 1, color: Colors.white10),
+                    _buildSyncReport(state, notifier),
+                  ],
+                );
+              }
 
-            return const SizedBox.shrink();
-          }),
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
     );
@@ -915,12 +1049,6 @@ class _RightSidebar extends ConsumerWidget {
     );
   }
 
-
-
-
-
-
-
   PopupMenuItem<SidebarSortOrder> _buildSortItem(
     SidebarSortOrder order,
     String label,
@@ -932,7 +1060,11 @@ class _RightSidebar extends ConsumerWidget {
       value: order,
       child: Row(
         children: [
-          Icon(icon, size: 14, color: isSelected ? Colors.blueAccent : Colors.grey),
+          Icon(
+            icon,
+            size: 14,
+            color: isSelected ? Colors.blueAccent : Colors.grey,
+          ),
           const SizedBox(width: 12),
           Text(
             label,
@@ -949,361 +1081,428 @@ class _RightSidebar extends ConsumerWidget {
       ),
     );
   }
-  } // End of _RightSidebar
+} // End of _RightSidebar
 
-  Widget _buildSyncDashboard(SyncState state, SyncNotifier notifier) {
-    return RepaintBoundary(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F0F0F).withValues(alpha: 0.95),
-          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+Widget _buildSyncDashboard(SyncState state, SyncNotifier notifier) {
+  return RepaintBoundary(
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F0F0F).withValues(alpha: 0.95),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'ACTIVE SYNC',
-                      style: TextStyle(
-                        fontFamily: 'Fredoka',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                        color: Colors.blueAccent,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      state.isSyncPaused ? 'PAUSED' : 'IN PROGRESS',
-                      style: TextStyle(
-                        fontFamily: 'Fredoka',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    _IconButton(
-                      icon: state.isSyncPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                      onPressed: () => notifier.togglePauseSyncing(),
-                      tooltip: state.isSyncPaused ? 'Resume' : 'Pause',
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
-                    const SizedBox(width: 8),
-                    _IconButton(
-                      icon: Icons.stop_rounded,
-                      onPressed: () => notifier.stopSyncing(),
-                      color: Colors.redAccent.withValues(alpha: 0.6),
-                      tooltip: 'Abort',
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Overall Progress Metric
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    (state.syncProgress * 100).toStringAsFixed(1),
-                    style: const TextStyle(
-                      fontFamily: 'Fredoka',
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
                   const Text(
-                    '%',
+                    'ACTIVE SYNC',
                     style: TextStyle(
                       fontFamily: 'Fredoka',
-                      fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1.5,
                       color: Colors.blueAccent,
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Overall Progress Bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: LinearProgressIndicator(
-                value: state.syncProgress,
-                backgroundColor: Colors.white.withValues(alpha: 0.05),
-                valueColor: const AlwaysStoppedAnimation(Colors.blueAccent),
-                minHeight: 8,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Metrics Grid
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: _buildMetricWidget('SPEED', _formatSpeed(state.syncSpeed), LucideIcons.zap, Colors.amberAccent)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildMetricWidget('ETA', state.remainingTime != null ? _formatDuration(state.remainingTime!) : '--', LucideIcons.timer, Colors.cyanAccent)),
-                    ],
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Divider(height: 1, color: Colors.white10),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(child: _buildMetricWidget('FILES', '${state.syncedCount} / ${state.syncTotalCount}', LucideIcons.fileCheck, Colors.greenAccent)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildMetricWidget('SIZE', '${_formatBytes(state.syncedBytes)} / ${_formatBytes(state.syncTotalBytes)}', LucideIcons.database, Colors.blueAccent)),
-                    ],
+                  const SizedBox(height: 4),
+                  Text(
+                    state.isSyncPaused ? 'PAUSED' : 'IN PROGRESS',
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
                   ),
                 ],
               ),
-            ),
-            // CURRENT FILE DETAILS
-            if (state.syncingFileName != null && state.syncingFileName!.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              const Divider(height: 1, color: Colors.white10),
-              const SizedBox(height: 16),
               Row(
                 children: [
-                  const Icon(LucideIcons.refreshCcw, size: 12, color: Colors.purpleAccent),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      state.syncingFileName!,
-                      style: const TextStyle(
-                        fontFamily: 'Fredoka',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white70,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  _IconButton(
+                    icon: state.isSyncPaused
+                        ? Icons.play_arrow_rounded
+                        : Icons.pause_rounded,
+                    onPressed: () => notifier.togglePauseSyncing(),
+                    tooltip: state.isSyncPaused ? 'Resume' : 'Pause',
+                    color: Colors.white.withValues(alpha: 0.6),
                   ),
-                  if (state.syncingFileTotalBytes > 0)
-                    Opacity(
-                      opacity: state.syncingFileTotalBytes >= 50 * 1024 * 1024 ? 1.0 : 0.0,
-                      child: Text(
-                        '${(state.syncingFileBytes / state.syncingFileTotalBytes * 100).toStringAsFixed(0)}%',
-                        style: const TextStyle(
-                          fontFamily: 'Fredoka',
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purpleAccent,
-                        ),
-                      ),
-                    ),
+                  const SizedBox(width: 8),
+                  _IconButton(
+                    icon: Icons.stop_rounded,
+                    onPressed: () => notifier.stopSyncing(),
+                    color: Colors.redAccent.withValues(alpha: 0.6),
+                    tooltip: 'Abort',
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              if (state.syncingFileTotalBytes > 0) ...[
-                Opacity(
-                  opacity: state.syncingFileTotalBytes >= 50 * 1024 * 1024 ? 1.0 : 0.0,
-                  child: Column(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: state.syncingFileBytes / state.syncingFileTotalBytes,
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
-                          valueColor: const AlwaysStoppedAnimation(Colors.purpleAccent),
-                          minHeight: 4,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${_formatBytes(state.syncingFileBytes)} of ${_formatBytes(state.syncingFileTotalBytes)}',
-                            style: TextStyle(
-                              fontFamily: 'Fredoka',
-                              fontSize: 9,
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Overall Progress Metric
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  (state.syncProgress * 100).toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontSize: 42,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  '%',
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Overall Progress Bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: LinearProgressIndicator(
+              value: state.syncProgress,
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              valueColor: const AlwaysStoppedAnimation(Colors.blueAccent),
+              minHeight: 8,
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Metrics Grid
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricWidget(
+                        'SPEED',
+                        _formatSpeed(state.syncSpeed),
+                        LucideIcons.zap,
+                        Colors.amberAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMetricWidget(
+                        'ETA',
+                        state.remainingTime != null
+                            ? _formatDuration(state.remainingTime!)
+                            : '--',
+                        LucideIcons.timer,
+                        Colors.cyanAccent,
+                      ),
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(height: 1, color: Colors.white10),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildMetricWidget(
+                        'FILES',
+                        '${state.syncedCount} / ${state.syncTotalCount}',
+                        LucideIcons.fileCheck,
+                        Colors.greenAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMetricWidget(
+                        'SIZE',
+                        '${_formatBytes(state.syncedBytes)} / ${_formatBytes(state.syncTotalBytes)}',
+                        LucideIcons.database,
+                        Colors.blueAccent,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // CURRENT FILE DETAILS
+          if (state.syncingFileName != null &&
+              state.syncingFileName!.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Divider(height: 1, color: Colors.white10),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.refreshCcw,
+                  size: 12,
+                  color: Colors.purpleAccent,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.syncingFileName!,
+                    style: const TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (state.syncingFileTotalBytes > 0)
+                  Opacity(
+                    opacity: state.syncingFileTotalBytes >= 50 * 1024 * 1024
+                        ? 1.0
+                        : 0.0,
+                    child: Text(
+                      '${(state.syncingFileBytes / state.syncingFileTotalBytes * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purpleAccent,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (state.syncingFileTotalBytes > 0) ...[
+              Opacity(
+                opacity: state.syncingFileTotalBytes >= 50 * 1024 * 1024
+                    ? 1.0
+                    : 0.0,
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value:
+                            state.syncingFileBytes /
+                            state.syncingFileTotalBytes,
+                        backgroundColor: Colors.white.withValues(alpha: 0.05),
+                        valueColor: const AlwaysStoppedAnimation(
+                          Colors.purpleAccent,
+                        ),
+                        minHeight: 4,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${_formatBytes(state.syncingFileBytes)} of ${_formatBytes(state.syncingFileTotalBytes)}',
+                          style: TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontSize: 9,
+                            color: Colors.white.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ],
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildSyncReport(SyncState state, SyncNotifier notifier) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F0F0F).withValues(alpha: 0.98),
+      borderRadius: BorderRadius.zero,
+      border: Border(
+        top: BorderSide(
+          color: Colors.greenAccent.withValues(alpha: 0.1),
+          width: 1.5,
         ),
       ),
-    );
-  }
-
-  Widget _buildSyncReport(SyncState state, SyncNotifier notifier) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F0F0F).withValues(alpha: 0.98),
-        borderRadius: BorderRadius.zero,
-        border: Border(top: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.1), width: 1.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 30,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.greenAccent.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'SYNC COMPLETE',
-                  style: TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: Colors.greenAccent,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${state.syncedFilesCount} files synced successfully (${_formatBytes(state.syncedBytes)})',
-                  style: TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontSize: 11,
-                    color: Colors.white.withValues(alpha: 0.4),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: () => notifier.clearSyncProgress(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              foregroundColor: Colors.white,
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-            ),
-            child: const Text(
-              'Dismiss',
-              style: TextStyle(fontFamily: 'Fredoka', fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricWidget(String label, String value, IconData icon, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.4),
+          blurRadius: 30,
+          offset: const Offset(0, -5),
+        ),
+      ],
+    ),
+    child: Row(
       children: [
-        Row(
-          children: [
-            Icon(icon, size: 10, color: color.withValues(alpha: 0.6)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Fredoka',
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-                color: Colors.white.withValues(alpha: 0.2),
-              ),
-            ),
-          ],
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.greenAccent.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            color: Colors.greenAccent,
+            size: 22,
+          ),
         ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                value,
-                style: const TextStyle(
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'SYNC COMPLETE',
+                style: TextStyle(
                   fontFamily: 'Fredoka',
-                  fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  fontSize: 13,
+                  color: Colors.greenAccent,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${state.syncedFilesCount} files synced successfully (${_formatBytes(state.syncedBytes)})',
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.4),
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        ElevatedButton(
+          onPressed: () => notifier.clearSyncProgress(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
-          ],
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: const Text(
+            'Dismiss',
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
-  String _formatSpeed(double bytesPerSecond) {
-    if (bytesPerSecond <= 0) return '0 B/s';
-    const suffixes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
-    int i = 0;
-    double speed = bytesPerSecond;
-    while (speed >= 1024 && i < suffixes.length - 1) {
-      speed /= 1024;
-      i++;
-    }
-    return '${speed.toStringAsFixed(1)} ${suffixes[i]}';
-  }
+Widget _buildMetricWidget(
+  String label,
+  String value,
+  IconData icon,
+  Color color,
+) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Icon(icon, size: 10, color: color.withValues(alpha: 0.6)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Fredoka',
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'Fredoka',
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
-  String _formatDuration(Duration duration) {
-    if (duration.isNegative) return '--';
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String hours = twoDigits(duration.inHours);
-    String minutes = twoDigits(duration.inMinutes.remainder(60));
-    String seconds = twoDigits(duration.inSeconds.remainder(60));
-
-    if (duration.inHours > 0) {
-      return '$hours:${minutes}h';
-    } else if (duration.inMinutes > 0) {
-      return '$minutes:${seconds}m';
-    } else {
-      return '${seconds}s';
-    }
+String _formatSpeed(double bytesPerSecond) {
+  if (bytesPerSecond <= 0) return '0 B/s';
+  const suffixes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
+  int i = 0;
+  double speed = bytesPerSecond;
+  while (speed >= 1024 && i < suffixes.length - 1) {
+    speed /= 1024;
+    i++;
   }
+  return '${speed.toStringAsFixed(1)} ${suffixes[i]}';
+}
+
+String _formatDuration(Duration duration) {
+  if (duration.isNegative) return '--';
+  String twoDigits(int n) => n.toString().padLeft(2, '0');
+  String hours = twoDigits(duration.inHours);
+  String minutes = twoDigits(duration.inMinutes.remainder(60));
+  String seconds = twoDigits(duration.inSeconds.remainder(60));
+
+  if (duration.inHours > 0) {
+    return '$hours:${minutes}h';
+  } else if (duration.inMinutes > 0) {
+    return '$minutes:${seconds}m';
+  } else {
+    return '${seconds}s';
+  }
+}
 
 class _IconButton extends StatelessWidget {
   final IconData icon;
@@ -1333,7 +1532,11 @@ class _IconButton extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 18, color: color ?? Colors.white.withValues(alpha: 0.8)),
+            child: Icon(
+              icon,
+              size: 18,
+              color: color ?? Colors.white.withValues(alpha: 0.8),
+            ),
           ),
         ),
       ),
@@ -1353,10 +1556,6 @@ String _formatBytes(int bytes) {
   return '${size.toStringAsFixed(i == 0 ? 0 : 1)} ${suffixes[i]}';
 }
 
-
-
-
-
 class _SyncItemTile extends ConsumerStatefulWidget {
   final SyncItem item;
   const _SyncItemTile({super.key, required this.item});
@@ -1375,26 +1574,39 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: AnimatedContainer(
+        duration: 200.ms,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: _isHovered
-              ? Colors.white.withValues(alpha: 0.03)
+              ? Colors.white.withValues(alpha: 0.04)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _isHovered
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.transparent,
+          ),
         ),
         child: Row(
           children: [
-            Icon(
-              widget.item.type == SyncType.directory
-                  ? LucideIcons.folder
-                  : LucideIcons.file,
-              size: 14,
-              color: (_isHovered ? Colors.blueAccent : Colors.grey).withValues(
-                alpha: 0.7,
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: (_isHovered ? Colors.blueAccent : Colors.white)
+                    .withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                widget.item.type == SyncType.directory
+                    ? LucideIcons.folder
+                    : LucideIcons.file,
+                size: 14,
+                color: (_isHovered ? Colors.blueAccent : Colors.grey)
+                    .withValues(alpha: 0.7),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Row(
                 children: [
@@ -1406,15 +1618,16 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
                         fontSize: 12,
                         color: _isHovered
                             ? Colors.white
-                            : Colors.white.withValues(alpha: 0.7),
+                            : Colors.white.withValues(alpha: 0.6),
                         fontWeight: _isHovered
-                            ? FontWeight.w500
+                            ? FontWeight.w600
                             : FontWeight.normal,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (widget.item.type == SyncType.file && widget.item.fileSize > 0) ...[
+                  if (widget.item.type == SyncType.file &&
+                      widget.item.fileSize > 0) ...[
                     const SizedBox(width: 8),
                     Text(
                       _formatBytes(widget.item.fileSize),
@@ -1425,26 +1638,45 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
                       ),
                     ),
                   ],
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   _buildOwnershipLine(widget.item.status),
                 ],
               ),
             ),
             _StatusIcon(status: widget.item.status),
             const SizedBox(width: 12),
-            Transform.scale(
-              scale: 0.8,
+            SizedBox(
+              width: 24,
+              height: 24,
               child: Checkbox(
                 value: widget.item.isSelected,
-                activeColor: (isSyncing || widget.item.status == FileStatus.identical) 
-                    ? Colors.blueAccent.withValues(alpha: 0.3) 
+                activeColor:
+                    (isSyncing || widget.item.status == FileStatus.identical)
+                    ? Colors.blueAccent.withValues(alpha: 0.3)
                     : Colors.blueAccent,
                 checkColor: Colors.white,
-                side: BorderSide(color: Colors.white.withValues(alpha: (isSyncing || widget.item.status == FileStatus.identical) ? 0.05 : 0.2)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                onChanged: (isSyncing || widget.item.status == FileStatus.identical) 
-                    ? null 
-                    : (val) => ref.read(syncProvider.notifier).toggleItemSelectionByPath(widget.item.relativePath, val ?? false),
+                side: BorderSide(
+                  color: Colors.white.withValues(
+                    alpha:
+                        (isSyncing ||
+                            widget.item.status == FileStatus.identical)
+                        ? 0.05
+                        : 0.2,
+                  ),
+                  width: 1.5,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                onChanged:
+                    (isSyncing || widget.item.status == FileStatus.identical)
+                    ? null
+                    : (val) => ref
+                          .read(syncProvider.notifier)
+                          .toggleItemSelectionByPath(
+                            widget.item.relativePath,
+                            val ?? false,
+                          ),
               ),
             ),
           ],
@@ -1565,7 +1797,11 @@ class FileContentSyncScreen extends ConsumerWidget {
                     ),
                     Text(
                       'Choose a file sync tool',
-                      style: TextStyle(fontFamily: 'Fredoka', color: Colors.grey, fontSize: 14),
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
