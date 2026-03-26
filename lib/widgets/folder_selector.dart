@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:path/path.dart' as p;
 import '../providers/sync_provider.dart';
 import 'glass_card.dart';
 
@@ -13,42 +14,88 @@ class FolderSelectorRow extends ConsumerWidget {
     final state = ref.watch(syncProvider);
     final notifier = ref.read(syncProvider.notifier);
 
-    return Column(
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        PathSelectorCard(
-          title: 'Source Folder',
-          path: state.sourcePath,
-          icon: LucideIcons.folderInput,
-          color: Colors.blueAccent,
-          onManualPath: (path) => notifier.setSourcePath(path),
-          onTap: () async {
-            String? result = await FilePicker.platform.getDirectoryPath();
-            if (result != null) notifier.setSourcePath(result);
-          },
-        ),
-        const SizedBox(height: 12),
-        Center(
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        Column(
+          children: [
+            PathSelectorCard(
+              title: 'Source Folder',
+              path: state.sourcePath,
+              icon: LucideIcons.folderInput,
+              color: Colors.blueAccent,
+              onManualPath: (path) => notifier.setSourcePath(path),
+              onTap: () async {
+                String? result = await FilePicker.platform.getDirectoryPath();
+                if (result != null) notifier.setSourcePath(result);
+              },
             ),
-            child: const Icon(LucideIcons.chevronDown, color: Colors.blueAccent, size: 16),
-          ),
+            const SizedBox(height: 40),
+            PathSelectorCard(
+              title: 'Target Folder',
+              path: state.targetPath,
+              icon: LucideIcons.folderOutput,
+              color: Colors.purpleAccent,
+              onManualPath: (path) => notifier.setTargetPath(path),
+              onTap: () async {
+                String? result = await FilePicker.platform.getDirectoryPath();
+                if (result != null) notifier.setTargetPath(result);
+              },
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        PathSelectorCard(
-          title: 'Target Folder',
-          path: state.targetPath,
-          icon: LucideIcons.folderOutput,
-          color: Colors.purpleAccent,
-          onManualPath: (path) => notifier.setTargetPath(path),
-          onTap: () async {
-            String? result = await FilePicker.platform.getDirectoryPath();
-            if (result != null) notifier.setTargetPath(result);
-          },
+        // Connector Line & Icon
+        Positioned(
+          child: Column(
+            children: [
+              Container(
+                width: 1,
+                height: 20,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.blueAccent.withValues(alpha: 0.3),
+                      Colors.transparent
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E1E),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: const Icon(LucideIcons.chevronDown,
+                    color: Colors.blueAccent, size: 14),
+              ),
+              Container(
+                width: 1,
+                height: 20,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.purpleAccent.withValues(alpha: 0.3)
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -111,32 +158,63 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: widget.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        widget.color.withValues(alpha: 0.2),
+                        widget.color.withValues(alpha: 0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: widget.color.withValues(alpha: 0.2)),
                   ),
-                  child: Icon(widget.icon, size: 16, color: widget.color),
+                  child: Icon(widget.icon, size: 18, color: widget.color),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  widget.title,
-                  style: const TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: Colors.white,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title.toUpperCase(),
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          letterSpacing: 1.5,
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _controller.text.isEmpty ? 'Not Selected' : p.basename(_controller.text),
+                        style: const TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Divider(height: 1, color: Colors.white10),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            padding: const EdgeInsets.all(20),
             child: Row(
               children: [
                 Expanded(
@@ -187,18 +265,18 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: widget.color.withValues(alpha: 0.08),
+                        color: widget.color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: widget.color.withValues(alpha: 0.2)),
+                        border: Border.all(color: widget.color.withValues(alpha: 0.15)),
                         boxShadow: [
                           BoxShadow(
-                            color: widget.color.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                            color: widget.color.withValues(alpha: 0.05),
+                            blurRadius: 12,
+                            spreadRadius: -2,
                           ),
                         ],
                       ),
-                      child: Icon(LucideIcons.folderSearch, size: 18, color: widget.color),
+                      child: Icon(LucideIcons.folderSearch, size: 20, color: widget.color),
                     ),
                   ),
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -85,6 +86,22 @@ class MainNavigator extends ConsumerWidget {
   }
 }
 
+class _HelpButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () => _showHelpDialog(context),
+      icon: const Icon(LucideIcons.helpCircle, size: 18),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white.withValues(alpha: 0.03),
+        padding: const EdgeInsets.all(8),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      tooltip: 'User Manual',
+    );
+  }
+}
+
 class SelectionScreen extends ConsumerWidget {
   const SelectionScreen({super.key});
 
@@ -116,6 +133,8 @@ class SelectionScreen extends ConsumerWidget {
                     letterSpacing: 2,
                   ),
                 ),
+                const Spacer(),
+                _HelpButton(),
               ],
             ),
             const SizedBox(height: 12),
@@ -327,11 +346,33 @@ Widget _buildSectionHeader(String title) {
   );
 }
 
-class _LeftSidebar extends ConsumerWidget {
+class _LeftSidebar extends ConsumerStatefulWidget {
   const _LeftSidebar();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LeftSidebar> createState() => _LeftSidebarState();
+}
+
+class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
+  late TextEditingController _speedController;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialSpeed = ref.read(syncProvider).speedLimit;
+    _speedController = TextEditingController(
+      text: initialSpeed == 0 ? '' : initialSpeed.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _speedController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final notifier = ref.read(syncProvider.notifier);
 
     return Container(
@@ -342,175 +383,284 @@ class _LeftSidebar extends ConsumerWidget {
         color: const Color(0xFF0F0F0F),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => notifier.setMode(AppMode.selection),
-                icon: const Icon(LucideIcons.arrowLeft, size: 20),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.05),
-                  padding: const EdgeInsets.all(8),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: _buildLogo()),
-            ],
-          ),
-          const SizedBox(height: 48),
-          _buildSectionHeader('FOLDERS'),
-          const SizedBox(height: 16),
-          const FolderSelectorRow(),
-          const SizedBox(height: 32),
-          const Spacer(),
-          // Consolidated Sync Controls Section
-          Consumer(
-            builder: (context, ref, _) {
-              final state = ref.watch(syncProvider);
-              final notifier = ref.read(syncProvider.notifier);
-              final isTwoWay = state.isTwoWaySync;
-              final isSyncing = state.isSyncing;
-              final selectedCount = state.selectedCount;
-
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // 2-Way Sync Toggle
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.03),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.05),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color:
-                                (isTwoWay ? Colors.purpleAccent : Colors.grey)
-                                    .withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            isTwoWay
-                                ? LucideIcons.repeat
-                                : LucideIcons.arrowRight,
-                            size: 16,
-                            color: isTwoWay ? Colors.purpleAccent : Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                '2-Way Sync',
-                                style: TextStyle(
-                                  fontFamily: 'Fredoka',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                isTwoWay ? 'Sync Both' : 'Push Only',
-                                style: TextStyle(
-                                  fontFamily: 'Fredoka',
-                                  fontSize: 11,
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: isTwoWay,
-                          onChanged: isSyncing
-                              ? null
-                              : (val) => notifier.toggleTwoWaySync(val),
-                          mouseCursor: isSyncing
-                              ? SystemMouseCursors.forbidden
-                              : SystemMouseCursors.click,
-                          activeThumbColor: Colors.purpleAccent,
-                          activeTrackColor: Colors.purpleAccent.withValues(
-                            alpha: 0.2,
-                          ),
-                          inactiveThumbColor: Colors.grey,
-                          inactiveTrackColor: Colors.white10,
-                        ),
-                      ],
-                    ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => notifier.setMode(AppMode.selection),
+                  icon: const Icon(LucideIcons.arrowLeft, size: 20),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    padding: const EdgeInsets.all(8),
                   ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: _buildLogo()),
+                const SizedBox(width: 8),
+                _HelpButton(),
+              ],
+            ),
+            const SizedBox(height: 48),
+            _buildSectionHeader('FOLDERS'),
+            const SizedBox(height: 16),
+            const FolderSelectorRow(),
+            const SizedBox(height: 32),
+            // Consolidated Sync Controls Section
+            Consumer(
+              builder: (context, ref, _) {
+                final state = ref.watch(syncProvider);
+                final notifier = ref.read(syncProvider.notifier);
+                final isTwoWay = state.isTwoWaySync;
+                final isSyncing = state.isSyncing;
+                final selectedCount = state.selectedCount;
+                final isVisible = (state.sourcePath != null &&
+                        state.sourcePath!.isNotEmpty &&
+                        state.targetPath != null &&
+                        state.targetPath!.isNotEmpty) ||
+                    isSyncing;
 
-                  if (selectedCount > 0 || isSyncing) ...[
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: isSyncing ? null : () => notifier.sync(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.blueAccent.withValues(
-                          alpha: 0.3,
+                if (!isVisible) return const SizedBox.shrink();
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 2-Way Sync Toggle
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.05),
                         ),
-                        disabledForegroundColor: Colors.white.withValues(
-                          alpha: 0.5,
-                        ),
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: isSyncing ? 0 : 8,
-                        shadowColor: Colors.blueAccent.withValues(alpha: 0.5),
                       ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          if (isSyncing)
-                            const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          else
-                            const Icon(LucideIcons.refreshCw, size: 18),
-                          const SizedBox(width: 10),
-                          Text(
-                            isSyncing
-                                ? 'Syncing...'
-                                : 'Sync $selectedCount Items',
-                            style: const TextStyle(
-                              fontFamily: 'Fredoka',
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: (isTwoWay ? Colors.purpleAccent : Colors.grey)
+                                  .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
                             ),
+                            child: Icon(
+                              isTwoWay ? LucideIcons.repeat : LucideIcons.arrowRight,
+                              size: 16,
+                              color: isTwoWay ? Colors.purpleAccent : Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '2-Way Sync',
+                                  style: TextStyle(
+                                    fontFamily: 'Fredoka',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  isTwoWay ? 'Sync Both' : 'Push Only',
+                                  style: TextStyle(
+                                    fontFamily: 'Fredoka',
+                                    fontSize: 11,
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: isTwoWay,
+                            onChanged: isSyncing
+                                ? null
+                                : (val) => notifier.toggleTwoWaySync(val),
+                            mouseCursor: isSyncing
+                                ? SystemMouseCursors.forbidden
+                                : SystemMouseCursors.click,
+                            activeThumbColor: Colors.purpleAccent,
+                            activeTrackColor: Colors.purpleAccent.withValues(
+                              alpha: 0.2,
+                            ),
+                            inactiveThumbColor: Colors.grey,
+                            inactiveTrackColor: Colors.white10,
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    // Speed Limit Selector
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.03),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                LucideIcons.gauge,
+                                size: 14,
+                                color: Colors.blueAccent.withValues(alpha: 0.7),
+                              ),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'SPEED LIMIT',
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                state.speedLimit == 0 ? 'Unlimited' : '${state.speedLimit} MB/s',
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontSize: 11,
+                                  color: Colors.blueAccent.withValues(alpha: 0.8),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _speedController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            style: const TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontSize: 13,
+                              color: Colors.white,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: '0 (Unlimited)',
+                              hintStyle: TextStyle(
+                                fontFamily: 'Fredoka',
+                                color: Colors.white.withValues(alpha: 0.2),
+                                fontSize: 12,
+                              ),
+                              suffixText: 'MB/s',
+                              suffixStyle: TextStyle(
+                                fontFamily: 'Fredoka',
+                                color: Colors.blueAccent.withValues(alpha: 0.5),
+                                fontSize: 11,
+                              ),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 14,
+                              ),
+                              filled: true,
+                              fillColor: Colors.black.withValues(alpha: 0.1),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blueAccent.withValues(alpha: 0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                            onChanged: (val) {
+                              final limit = int.tryParse(val) ?? 0;
+                              notifier.setSpeedLimit(limit);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (selectedCount > 0 || isSyncing) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: isSyncing ? null : () => notifier.sync(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.blueAccent.withValues(
+                            alpha: 0.3,
+                          ),
+                          disabledForegroundColor: Colors.white.withValues(
+                            alpha: 0.5,
+                          ),
+                          minimumSize: const Size(double.infinity, 52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: isSyncing ? 0 : 8,
+                          shadowColor: Colors.blueAccent.withValues(alpha: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isSyncing)
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            else
+                              const Icon(LucideIcons.refreshCw, size: 18),
+                            const SizedBox(width: 10),
+                            Text(
+                              isSyncing ? 'Syncing...' : 'Sync $selectedCount Items',
+                              style: const TextStyle(
+                                fontFamily: 'Fredoka',
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              );
-            },
-          ),
-        ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
+
 
   Widget _buildLogo() {
     return Row(
@@ -1805,6 +1955,8 @@ class FileContentSyncScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+                const Spacer(),
+                _HelpButton(),
               ],
             ).animate().fadeIn(),
             const SizedBox(height: 48),
@@ -1828,6 +1980,133 @@ class FileContentSyncScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+void _showHelpDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+        child: GlassCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(LucideIcons.helpCircle, color: Colors.blueAccent, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'USER MANUAL',
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(LucideIcons.x, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHelpSection(
+                        '1. Folder Selection',
+                        'Choose a SOURCE folder (where your files are) and a TARGET folder (where you want them to go). The app scans for differences automatically.',
+                        LucideIcons.folderSearch,
+                      ),
+                      _buildHelpSection(
+                        '2. Sync Modes',
+                        '• 2-Way Sync: Keeps both folders identical by copying changes in both directions.\n• Push Only: Only copies changes from Source to Target.',
+                        LucideIcons.repeat,
+                      ),
+                      _buildHelpSection(
+                        '3. Transfer Speed',
+                        'Set a Speed Limit in the sidebar (MB/s) to throttle bandwidth. Use 0 for Unlimited. You can change this even while syncing!',
+                        LucideIcons.gauge,
+                      ),
+                      _buildHelpSection(
+                        '4. Transfer Queue',
+                        'The right sidebar shows all detected differences. Use checkboxes to select what to sync, or use the "All/None" shortcuts.',
+                        LucideIcons.list,
+                      ),
+                      _buildHelpSection(
+                        '5. Start Sync',
+                        'Click the primary "Sync Items" button to begin. You can pause or stop the process at any time from the dashboard.',
+                        LucideIcons.refreshCw,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _buildHelpSection(String title, String description, IconData icon) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 24),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: Colors.blueAccent.withValues(alpha: 0.6)),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontSize: 13,
+                  color: Colors.white.withValues(alpha: 0.5),
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class MaxWidthContainer extends StatelessWidget {

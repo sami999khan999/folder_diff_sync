@@ -15,7 +15,9 @@ class SyncService {
     bool Function()? shouldAbort,
     bool Function()? shouldPause,
     int concurrency = 4,
+    int Function()? getSpeedLimit,
   }) async {
+    final effectiveConcurrency = (getSpeedLimit?.call() ?? 0) > 0 ? 1 : concurrency;
     final selectedItems = items.where((e) => (e.isSelected && e.type == SyncType.file)).toList();
     if (selectedItems.isEmpty) return;
 
@@ -65,16 +67,25 @@ class SyncService {
           }).toList();
 
           // Use static helper to avoid Isolate scope capture issues
-          await _runBatchInIsolate(batchItems, concurrency);
-
-          for (final item in chunk) {
-            completedCount++;
-            copiedBytes += item.fileSize;
-            onProgress?.call(item, completedCount, selectedItems.length, copiedBytes, totalBytes, 0);
+          if ((getSpeedLimit?.call() ?? 0) > 0) {
+            // If speed limit is set, we use Dart copy sequentially for better control
+            for (final item in chunk) {
+               await _copyItem(item, getSpeedLimit: getSpeedLimit);
+               completedCount++;
+               copiedBytes += item.fileSize;
+               onProgress?.call(item, completedCount, selectedItems.length, copiedBytes, totalBytes, 0);
+            }
+          } else {
+            await _runBatchInIsolate(batchItems, effectiveConcurrency);
+            for (final item in chunk) {
+              completedCount++;
+              copiedBytes += item.fileSize;
+              onProgress?.call(item, completedCount, selectedItems.length, copiedBytes, totalBytes, 0);
+            }
           }
         } else {
           await Future.wait(chunk.map((item) async {
-            await _copyItem(item);
+            await _copyItem(item, getSpeedLimit: getSpeedLimit);
             completedCount++;
             copiedBytes += item.fileSize;
             onProgress?.call(item, completedCount, selectedItems.length, copiedBytes, totalBytes, 0);
@@ -92,7 +103,7 @@ class SyncService {
       }
 
       int lastItemBytes = 0;
-      await _copyItem(item, onByteProgress: (b) {
+      await _copyItem(item, getSpeedLimit: getSpeedLimit, onByteProgress: (b) {
         final delta = b - lastItemBytes;
         copiedBytes += delta;
         lastItemBytes = b;
@@ -114,7 +125,7 @@ class SyncService {
     return Isolate.run(() => NativeFileTransfer.copyFile(from, to));
   }
 
-  static Future<void> _copyItem(SyncItem item, {Function(int bytesRead)? onByteProgress}) async {
+  static Future<void> _copyItem(SyncItem item, {int Function()? getSpeedLimit, Function(int bytesRead)? onByteProgress}) async {
     final bool isToSource = item.status == FileStatus.missingInSource;
     final String fromPath = isToSource ? item.targetPath : item.sourcePath;
     final String toPath = isToSource ? item.sourcePath : item.targetPath;
@@ -126,7 +137,7 @@ class SyncService {
     } else {
       await Directory(File(toPath).parent.path).create(recursive: true);
       
-      if (NativeFileTransfer.isAvailable) {
+      if (NativeFileTransfer.isAvailable && (getSpeedLimit?.call() ?? 0) == 0) {
         if (item.fileSize > _largeFileThreshold) {
           final receivePort = ReceivePort();
           await Isolate.spawn(_nativeCopyWorker, {
@@ -155,8 +166,8 @@ class SyncService {
         }
       } else {
         // Fallback
-        if (item.fileSize > _largeFileThreshold) {
-          await _copyFileOptimized(fromPath, toPath, onByteProgress: onByteProgress);
+        if (item.fileSize > _largeFileThreshold || (getSpeedLimit?.call() ?? 0) > 0) {
+          await SyncService._copyFileOptimized(fromPath, toPath, getSpeedLimit: getSpeedLimit, onByteProgress: onByteProgress);
         } else {
           await File(fromPath).copy(toPath);
           onByteProgress?.call(item.fileSize);
@@ -187,7 +198,7 @@ class SyncService {
     }
   }
 
-  static Future<void> _copyFileOptimized(String from, String to, {Function(int bytesRead)? onByteProgress}) async {
+  static Future<void> _copyFileOptimized(String from, String to, {int Function()? getSpeedLimit, Function(int bytesRead)? onByteProgress}) async {
     final sourceFile = await File(from).open(mode: FileMode.read);
     final targetFile = await File(to).open(mode: FileMode.write);
     
@@ -195,10 +206,22 @@ class SyncService {
       final buffer = Uint8List(_bufferSize);
       int totalRead = 0;
       int bytesRead;
+      final stopwatch = Stopwatch()..start();
+
       while ((bytesRead = await sourceFile.readInto(buffer)) > 0) {
         await targetFile.writeFrom(buffer, 0, bytesRead);
         totalRead += bytesRead;
         onByteProgress?.call(totalRead);
+
+        final currentLimit = getSpeedLimit?.call() ?? 0;
+        if (currentLimit > 0) {
+          // Speed limit is in MB/s. Convert to bytes for comparison.
+          final double minTimeMs = (totalRead / (currentLimit * 1024 * 1024)) * 1000;
+          final int actualTimeMs = stopwatch.elapsedMilliseconds;
+          if (actualTimeMs < minTimeMs) {
+            await Future.delayed(Duration(milliseconds: (minTimeMs - actualTimeMs).toInt()));
+          }
+        }
       }
     } finally {
       await sourceFile.close();
