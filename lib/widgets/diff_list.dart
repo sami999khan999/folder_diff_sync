@@ -104,15 +104,10 @@ class DiffList extends ConsumerWidget {
             itemCount: items.length,
             itemBuilder: (context, index) {
               final item = items[index];
-              final tile = _DiffItemTile(
+              return _DiffItemTile(
                 item: item,
                 onChanged: (_) => notifier.toggleItemSelection(index),
               );
-              // Only animate the first 20 items to avoid animation blowup
-              if (index < 20) {
-                return tile.animate().fadeIn(delay: (index * 30).ms).slideX(begin: 0.05);
-              }
-              return tile;
             },
           ),
         ),
@@ -140,7 +135,7 @@ class DiffList extends ConsumerWidget {
           ),
         ],
       ),
-    ).animate().fadeIn();
+    );
   }
 }
 

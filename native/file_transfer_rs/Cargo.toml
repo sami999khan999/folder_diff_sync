@@ -1,0 +1,15 @@
+[package]
+name = "file_transfer_rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "file_transfer_rs"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+libc = "0.2"
+rayon = "1.10"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winbase", "winnt", "errhandlingapi", "fileapi", "handleapi", "std"] }

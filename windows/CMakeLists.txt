@@ -57,6 +57,19 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Build Rust native library
+add_custom_command(
+  OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../native/file_transfer_rs/target/release/file_transfer_rs.dll"
+  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/../native/build_rust.cmd"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../native"
+  COMMENT "Building Rust native library..."
+  VERBATIM
+)
+add_custom_target(build_rust_lib ALL
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../native/file_transfer_rs/target/release/file_transfer_rs.dll"
+)
+add_dependencies(${BINARY_NAME} build_rust_lib)
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
@@ -86,6 +99,10 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../native/file_transfer_rs/target/release/file_transfer_rs.dll"
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
 
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")

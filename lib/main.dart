@@ -8,7 +8,7 @@ import 'widgets/folder_selector.dart';
 import 'widgets/glass_card.dart';
 import 'widgets/env_sync_view.dart';
 import 'widgets/sync_tree_view.dart';
-import 'widgets/primary_button.dart';
+
 import 'package:multi_split_view/multi_split_view.dart';
 
 void main() {
@@ -103,7 +103,7 @@ class SelectionScreen extends ConsumerWidget {
                 fontSize: 18,
                 fontWeight: FontWeight.w500,
               ),
-            ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2),
+            ),
             Row(
               children: [
                 Image.asset('assets/logo.png', width: 44, height: 44),
@@ -117,10 +117,7 @@ class SelectionScreen extends ConsumerWidget {
                   ),
                 ),
               ],
-            )
-                .animate()
-                .fadeIn(duration: 600.ms, delay: 100.ms)
-                .slideY(begin: 0.2),
+            ),
             const SizedBox(height: 12),
             Text(
                   'Choose your synchronization method to begin.',
@@ -128,10 +125,7 @@ class SelectionScreen extends ConsumerWidget {
                     color: Colors.grey.withValues(alpha: 0.7),
                     fontSize: 16,
                   ),
-                )
-                .animate()
-                .fadeIn(duration: 600.ms, delay: 200.ms)
-                .slideY(begin: 0.2),
+                ),
             const SizedBox(height: 48),
             Row(
               children: [
@@ -145,7 +139,7 @@ class SelectionScreen extends ConsumerWidget {
                     onTap: () => ref
                         .read(syncProvider.notifier)
                         .setMode(AppMode.folderSync),
-                  ).animate().fadeIn(duration: 600.ms, delay: 400.ms).scale(),
+                  ),
                 ),
                 const SizedBox(width: 24),
                 Expanded(
@@ -158,7 +152,7 @@ class SelectionScreen extends ConsumerWidget {
                     onTap: () => ref
                         .read(syncProvider.notifier)
                         .setMode(AppMode.fileContentSync),
-                  ).animate().fadeIn(duration: 600.ms, delay: 500.ms).scale(),
+                  ),
                 ),
               ],
             ),
@@ -312,7 +306,6 @@ class _LeftSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(syncProvider);
     final notifier = ref.read(syncProvider.notifier);
 
     return Container(
@@ -347,7 +340,7 @@ class _LeftSidebar extends ConsumerWidget {
               Expanded(child: _buildLogo()),
             ],
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 48),
           const Text(
             'FOLDERS',
             style: TextStyle(
@@ -356,52 +349,148 @@ class _LeftSidebar extends ConsumerWidget {
               letterSpacing: 2,
               color: Colors.grey,
             ),
-          ).animate().fadeIn(delay: 200.ms).slideX(begin: -0.2),
+          ),
           const SizedBox(height: 16),
-          const FolderSelectorRow().animate().fadeIn(delay: 300.ms),
+          const FolderSelectorRow(),
+          const SizedBox(height: 32),
+          // 2-Way Sync Toggle
+          Consumer(
+            builder: (context, ref, _) {
+              final isTwoWay = ref.watch(syncProvider.select((s) => s.isTwoWaySync));
+              final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
+              
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (isTwoWay ? Colors.purpleAccent : Colors.grey).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        isTwoWay ? LucideIcons.repeat : LucideIcons.arrowRight,
+                        size: 16,
+                        color: isTwoWay ? Colors.purpleAccent : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '2-Way Sync',
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            isTwoWay ? 'Sync Both' : 'Push Only',
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: isTwoWay,
+                      onChanged: isSyncing ? null : (val) => ref.read(syncProvider.notifier).toggleTwoWaySync(val),
+                      activeThumbColor: Colors.purpleAccent,
+                      activeTrackColor: Colors.purpleAccent.withValues(alpha: 0.2),
+                      inactiveThumbColor: Colors.grey,
+                      inactiveTrackColor: Colors.white10,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           const Spacer(),
-          _buildSidebarCard(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: const Text(
-                    'Two-Way Sync',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          // Sync Now Button
+          Consumer(
+            builder: (context, ref, _) {
+              final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
+              final syncProgress = ref.watch(syncProvider.select((s) => s.syncProgress));
+              final selectedCount = ref.watch(syncProvider.select((s) => s.selectedCount));
+              
+              if (isSyncing) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: syncProgress,
+                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          valueColor: const AlwaysStoppedAnimation(Colors.blueAccent),
+                          minHeight: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${(syncProgress * 100).toStringAsFixed(1)}% syncing...',
+                        style: TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
                   ),
-                  value: state.isTwoWaySync,
-                  onChanged: state.isSyncing
-                      ? null
-                      : (val) => notifier.toggleTwoWaySync(val),
-                  secondary: AnimatedRotation(
-                    duration: 300.ms,
-                    turns: state.isTwoWaySync ? 0.5 : 0,
-                    child: Icon(
-                      LucideIcons.arrowLeftRight,
-                      size: 18,
-                      color: state.isTwoWaySync
-                          ? Colors.blueAccent
-                          : Colors.grey.withValues(alpha: 0.5),
+                );
+              }
+              if (selectedCount > 0) {
+                return Padding(
+                  padding: const EdgeInsets.all(0),
+                  child: Container(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: ElevatedButton(
+                      onPressed: () => ref.read(syncProvider.notifier).sync(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 52),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 8,
+                        shadowColor: Colors.blueAccent.withValues(alpha: 0.5),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(LucideIcons.refreshCw, size: 18),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Sync $selectedCount Items',
+                            style: const TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: PrimaryButton(
-                    onPressed:
-                        state.isSyncing || state.isBackgroundScanning || state.selectedCount == 0
-                        ? null
-                        : () => notifier.sync(),
-                    icon: LucideIcons.copy,
-                    label: state.isBackgroundScanning ? 'Scanning...' : 'Start Syncing',
-                    isLoading: state.isSyncing,
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
     );
@@ -427,20 +516,10 @@ class _LeftSidebar extends ConsumerWidget {
           ),
         ),
       ],
-    ).animate().fadeIn().slideX(begin: -0.1);
-  }
-
-  Widget _buildSidebarCard({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: child,
     );
   }
+
+
 }
 
 class _MiddleSection extends ConsumerWidget {
@@ -464,82 +543,59 @@ class _MiddleSection extends ConsumerWidget {
                   Row(
                     children: [
                       const Text(
-                        'Structure',
+                        'STRUCTURE',
                         style: TextStyle(
-                          fontSize: 22,
+                          fontFamily: 'Fredoka',
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                          letterSpacing: 2.5,
+                          color: Colors.blueAccent,
                         ),
                       ),
                       const SizedBox(width: 12),
                       IconButton(
-                            onPressed:
-                                state.isComparing || state.isBackgroundScanning || state.isSyncing
-                                ? null
-                                : () => notifier.reload(),
-                            icon: Icon(
-                              LucideIcons.refreshCw,
-                              size: 16,
-                              color:
-                                  state.isComparing ||
-                                      state.isBackgroundScanning || state.isSyncing
-                                  ? Colors.grey
-                                  : Colors.blueAccent,
-                            ),
-                            tooltip: 'Reload structure',
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.05,
-                              ),
-                              padding: const EdgeInsets.all(8),
-                            ),
-                          )
-                          .animate(
-                            target:
-                                state.isComparing || state.isBackgroundScanning || state.isSyncing
-                                ? 1
-                                : 0,
-                          )
-                          .shimmer(),
+                        onPressed: state.isComparing || state.isBackgroundScanning || state.isSyncing
+                            ? null
+                            : () => notifier.reload(),
+                        icon: Icon(
+                          LucideIcons.refreshCw,
+                          size: 16,
+                          color: state.isComparing || state.isBackgroundScanning || state.isSyncing
+                              ? Colors.grey
+                              : Colors.blueAccent,
+                        ),
+                        tooltip: 'Reload structure',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
                     ],
                   ),
-                   Row(
+                  Row(
                     children: [
                       if (state.isBackgroundScanComplete && !state.isBackgroundScanning)
-                        const Icon(LucideIcons.checkCircle2, color: Colors.greenAccent, size: 14)
-                      else
-                        const SizedBox.shrink(),
+                        const Icon(LucideIcons.checkCircle2, color: Colors.greenAccent, size: 14),
                       if (state.isBackgroundScanComplete && !state.isBackgroundScanning)
                         const SizedBox(width: 8),
                       Text(
                         state.isBackgroundScanning
                             ? 'Checking for differences...'
-                            : (state.isBackgroundScanComplete 
-                                ? (state.diffCount == 0 
-                                    ? 'No differences found. Folders are in sync.' 
+                            : (state.isBackgroundScanComplete
+                                ? (state.diffCount == 0
+                                    ? 'No differences found. Folders are in sync.'
                                     : 'Scan complete. Found ${state.diffCount} differences.')
                                 : 'Select items to include in sync'),
                         style: TextStyle(
+                          fontFamily: 'Fredoka',
                           color: state.isBackgroundScanning
                               ? Colors.blueAccent.withValues(alpha: 0.7)
-                              : (state.isBackgroundScanComplete ? Colors.greenAccent.withValues(alpha: 0.8) : Colors.grey),
+                              : (state.isBackgroundScanComplete
+                                  ? Colors.greenAccent.withValues(alpha: 0.8)
+                                  : Colors.grey),
                           fontSize: 13,
-                          fontWeight: state.isBackgroundScanning || state.isBackgroundScanComplete
-                              ? FontWeight.bold
-                              : FontWeight.normal,
                         ),
                       ),
-                      if (state.isBackgroundScanning) ...[
-                        const SizedBox(width: 8),
-                        const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ],
@@ -570,7 +626,7 @@ class _MiddleSection extends ConsumerWidget {
                   ? const Center(child: CircularProgressIndicator())
                   : const SyncTreeView(),
             ),
-          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.02),
+          ),
         ],
       ),
     );
@@ -593,6 +649,7 @@ class _MiddleSection extends ConsumerWidget {
       label: Text(
         label,
         style: TextStyle(
+          fontFamily: 'Fredoka',
           fontSize: 13,
           fontWeight: FontWeight.w600,
           color: disabled ? Colors.white.withValues(alpha: 0.2) : null,
@@ -607,16 +664,25 @@ class _RightSidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(syncProvider);
     final notifier = ref.read(syncProvider.notifier);
-    // Watch itemsRevision for updates
-    ref.watch(syncProvider.select((s) => s.itemsRevision));
-    final selItems = state.sidebarItems;
+    final sidebarItems = ref.watch(syncProvider.select((s) => s.sidebarItems));
+    final sidebarLimit = ref.watch(syncProvider.select((s) => s.sidebarItemLimit));
+    final sidebarSearchQuery = ref.watch(syncProvider.select((s) => s.sidebarSearchQuery));
+    
+    final displayedItems = sidebarItems.take(sidebarLimit).toList();
+    final hasMore = sidebarItems.length > sidebarLimit;
 
-    final displayedItems = selItems
-        .take(state.sidebarItemLimit)
-        .toList();
-    final hasMore = selItems.length > state.sidebarItemLimit;
+    // These don't change during sync progress, only on major state changes
+    final sidebarSortOrder = ref.watch(syncProvider.select((s) => s.sidebarSortOrder));
+    final selectedCount = ref.watch(syncProvider.select((s) => s.selectedCount));
+    final totalSelectedSize = ref.watch(syncProvider.select((s) => s.totalSelectedSize));
+    final syncProgress = ref.watch(syncProvider.select((s) => s.syncProgress));
+    final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
+    final syncedFilesCount = ref.watch(syncProvider.select((s) => s.syncedFilesCount));
+    final syncTotalBytes = ref.watch(syncProvider.select((s) => s.syncTotalBytes));
+    
+    // Watch itemsRevision to force rebuild when selection logic clears/rebuilds internal state
+    ref.watch(syncProvider.select((s) => s.itemsRevision));
 
     return Container(
       decoration: BoxDecoration(
@@ -627,169 +693,177 @@ class _RightSidebar extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Row(
-                        children: [
-                           Image.asset('assets/logo.png', width: 20, height: 20),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'TRANSFER QUEUE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => notifier.toggleAll(true),
-                        style: TextButton.styleFrom(
-                          minimumSize: Size.zero,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text('All', style: TextStyle(fontSize: 10, color: Colors.blueAccent)),
-                      ),
-                      TextButton(
-                        onPressed: () => notifier.toggleAll(false),
-                        style: TextButton.styleFrom(
-                          minimumSize: Size.zero,
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text('None', style: TextStyle(fontSize: 10, color: Colors.redAccent)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Search Bar
-                  Container(
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Row(
                       children: [
-                        Icon(LucideIcons.search, size: 14, color: Colors.white.withValues(alpha: 0.3)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            onChanged: (val) => notifier.setSidebarSearchQuery(val),
-                            style: const TextStyle(fontSize: 12, color: Colors.white),
-                            decoration: InputDecoration(
-                              hintText: 'Search in queue...',
-                              hintStyle: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.2)),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
+                         Image.asset('assets/logo.png', width: 20, height: 20),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'TRANSFER QUEUE',
+                          style: TextStyle(
+                            fontFamily: 'Fredoka',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                            color: Colors.grey,
                           ),
-                        ),
-                        if (state.sidebarSearchQuery.isNotEmpty)
-                          GestureDetector(
-                            onTap: () => notifier.setSidebarSearchQuery(''),
-                            child: Icon(LucideIcons.x, size: 14, color: Colors.white.withValues(alpha: 0.3)),
-                          ),
-                        const SizedBox(width: 8),
-                        const VerticalDivider(width: 1, indent: 8, endIndent: 8, color: Colors.white12),
-                        const SizedBox(width: 4),
-                        PopupMenuButton<SidebarSortOrder>(
-                          offset: const Offset(0, 40),
-                          icon: Icon(LucideIcons.listFilter, size: 14, color: Colors.white.withValues(alpha: 0.3)),
-                          padding: EdgeInsets.zero,
-                          tooltip: 'Sort By',
-                          color: const Color(0xFF1E1E1E),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          onSelected: (order) => notifier.setSidebarSortOrder(order),
-                          itemBuilder: (context) => [
-                            _buildSortItem(SidebarSortOrder.name, 'Name', LucideIcons.type, state.sidebarSortOrder),
-                            _buildSortItem(SidebarSortOrder.size, 'Size', LucideIcons.hardDrive, state.sidebarSortOrder),
-                            _buildSortItem(SidebarSortOrder.status, 'Status', LucideIcons.info, state.sidebarSortOrder),
-                          ],
                         ),
                       ],
                     ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => notifier.toggleAll(true),
+                      style: TextButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('All', style: TextStyle(fontFamily: 'Fredoka', fontSize: 11, color: Colors.blueAccent)),
+                    ),
+                    TextButton(
+                      onPressed: () => notifier.toggleAll(false),
+                      style: TextButton.styleFrom(
+                        minimumSize: Size.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('None', style: TextStyle(fontFamily: 'Fredoka', fontSize: 11, color: Colors.redAccent)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Search Bar
+                Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   ),
-                  const SizedBox(height: 12),
-                  // Size and count summary
-                  Row(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Row(
                     children: [
-                      Icon(LucideIcons.file, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
-                      const SizedBox(width: 6),
-                      Text(
-                        state.syncProgress >= 1.0 && state.selectedCount == 0 && !state.isSyncing
-                            ? '${state.syncedFilesCount} files synced'
-                            : '${state.selectedCount} files',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.5),
+                      Icon(LucideIcons.search, size: 16, color: Colors.white.withValues(alpha: 0.3)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          onChanged: (val) => notifier.setSidebarSearchQuery(val),
+                          style: const TextStyle(fontFamily: 'Fredoka', fontSize: 13, color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Search in queue...',
+                            hintStyle: TextStyle(fontFamily: 'Fredoka', fontSize: 13, color: Colors.white.withValues(alpha: 0.2)),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Icon(LucideIcons.hardDrive, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
-                      const SizedBox(width: 6),
-                      Text(
-                        state.syncProgress >= 1.0 && state.selectedCount == 0 && !state.isSyncing
-                            ? _formatBytes(state.syncTotalBytes)
-                            : _formatBytes(state.totalSelectedSize),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.5),
+                      if (sidebarSearchQuery.isNotEmpty)
+                        GestureDetector(
+                          onTap: () => notifier.setSidebarSearchQuery(''),
+                          child: Icon(LucideIcons.x, size: 16, color: Colors.white.withValues(alpha: 0.3)),
                         ),
+                      const SizedBox(width: 10),
+                      const VerticalDivider(width: 1, indent: 10, endIndent: 10, color: Colors.white12),
+                      const SizedBox(width: 4),
+                      PopupMenuButton<SidebarSortOrder>(
+                        offset: const Offset(0, 40),
+                        icon: Icon(LucideIcons.listFilter, size: 16, color: Colors.white.withValues(alpha: 0.3)),
+                        padding: EdgeInsets.zero,
+                        tooltip: 'Sort By',
+                        color: const Color(0xFF1E1E1E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onSelected: (order) => notifier.setSidebarSortOrder(order),
+                        itemBuilder: (context) => [
+                          _buildSortItem(SidebarSortOrder.name, 'Name', LucideIcons.type, sidebarSortOrder),
+                          _buildSortItem(SidebarSortOrder.size, 'Size', LucideIcons.hardDrive, sidebarSortOrder),
+                          _buildSortItem(SidebarSortOrder.status, 'Status', LucideIcons.info, sidebarSortOrder),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 16),
+                // Size and count summary
+                Row(
+                  children: [
+                    Icon(LucideIcons.file, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
+                    const SizedBox(width: 6),
+                    Text(
+                      syncProgress >= 1.0 && selectedCount == 0 && !isSyncing
+                          ? '$syncedFilesCount files synced'
+                          : '$selectedCount files',
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(LucideIcons.hardDrive, size: 13, color: Colors.grey.withValues(alpha: 0.6)),
+                    const SizedBox(width: 6),
+                    Text(
+                      syncProgress >= 1.0 && selectedCount == 0 && !isSyncing
+                          ? _formatBytes(syncTotalBytes)
+                          : _formatBytes(totalSelectedSize),
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Expanded(
-                    child: selItems.isEmpty
+                    child: sidebarItems.isEmpty
                         ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
                                   LucideIcons.inbox,
-                                  size: 40,
+                                  size: 48,
                                   color: Colors.white.withValues(alpha: 0.1),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   'Queue is empty',
                                   style: TextStyle(
+                                    fontFamily: 'Fredoka',
                                     color: Colors.white.withValues(alpha: 0.2),
-                                    fontSize: 13,
+                                    fontSize: 15,
                                   ),
                                 ),
                               ],
                             ),
                           )
                         : ListView.separated(
-                            itemCount:
-                                displayedItems.length + (hasMore ? 1 : 0),
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 4),
+                            itemCount: displayedItems.length + (hasMore ? 1 : 0),
+                            separatorBuilder: (context, index) => const SizedBox(height: 6),
                             itemBuilder: (context, index) {
                               if (index == displayedItems.length) {
-                                return _buildLoadMore(
-                                  ref,
-                                  selItems.length -
-                                      state.sidebarItemLimit,
-                                );
+                                return _buildLoadMore(ref, sidebarItems.length - sidebarLimit);
                               }
                               final item = displayedItems[index];
-                              return _SyncItemTile(item: item);
+                              return _SyncItemTile(
+                                key: ValueKey('sidebar_${item.relativePath}'),
+                                item: item,
+                              );
                             },
                           ),
                   ),
@@ -797,8 +871,34 @@ class _RightSidebar extends ConsumerWidget {
               ),
             ),
           ),
-          if (state.isSyncing || state.syncProgress > 0)
-            _buildProgressFooter(state, notifier).animate().fadeIn().slideY(begin: 0.1),
+          // Dashboard & Report Section
+          Consumer(builder: (context, ref, _) {
+            final state = ref.watch(syncProvider);
+            final bool showDashboard = state.isSyncing;
+            final bool showReport = state.syncProgress >= 1.0 && !state.isSyncing && state.syncTotalCount > 0;
+
+            if (showDashboard) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Divider(height: 1, color: Colors.white10),
+                  _buildSyncDashboard(state, notifier),
+                ],
+              );
+            }
+
+            if (showReport) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Divider(height: 1, color: Colors.white10),
+                  _buildSyncReport(state, notifier),
+                ],
+              );
+            }
+
+            return const SizedBox.shrink();
+          }),
         ],
       ),
     );
@@ -832,155 +932,11 @@ class _RightSidebar extends ConsumerWidget {
     );
   }
 
-  Widget _buildProgressFooter(SyncState state, SyncNotifier notifier) {
-    final bool isDone = state.syncProgress >= 1.0 && !state.isSyncing;
 
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withValues(alpha: 0.04),
-            Colors.white.withValues(alpha: 0.01),
-          ],
-        ),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isDone 
-                        ? 'SYNC REPORT: ${state.syncedFilesCount}F, ${state.syncedFoldersCount} Dir' 
-                        : (state.isSyncing ? 'Synchronizing...' : 'Sync Complete'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    if (isDone)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Total data synced: ${_formatBytes(state.syncTotalBytes)}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.white.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (isDone)
-                TextButton(
-                  onPressed: () => notifier.clearSyncProgress(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.blueAccent,
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    backgroundColor: Colors.blueAccent.withValues(alpha: 0.1),
-                  ),
-                  child: const Text('Dismiss', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                )
-              else
-                Text(
-                  '${(state.syncProgress * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(
-                    color: Colors.blueAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-            ],
-          ),
-          if (!isDone) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${state.syncedCount} / ${state.syncTotalCount} items synced',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.white.withValues(alpha: 0.4),
-                  ),
-                ),
-                Text(
-                  '${_formatBytes(state.syncedBytes)} / ${_formatBytes(state.syncTotalBytes)}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.white.withValues(alpha: 0.4),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (!isDone) ...[
-            const SizedBox(height: 16),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return Stack(
-                  children: [
-                    Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    AnimatedContainer(
-                      duration: 300.ms,
-                      height: 6,
-                      width: constraints.maxWidth * state.syncProgress,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Colors.blueAccent, Colors.cyanAccent],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blueAccent.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-          if (state.isSyncing && state.syncingFileName != null && state.syncingFileName!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                state.syncingFileName!,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey.withValues(alpha: 0.6),
-                  fontStyle: FontStyle.italic,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+
+
+
+
 
   PopupMenuItem<SidebarSortOrder> _buildSortItem(
     SidebarSortOrder order,
@@ -1010,23 +966,406 @@ class _RightSidebar extends ConsumerWidget {
       ),
     );
   }
+  } // End of _RightSidebar
 
-  static String _formatBytes(int bytes) {
-    if (bytes <= 0) return '0 B';
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  Widget _buildSyncDashboard(SyncState state, SyncNotifier notifier) {
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F0F0F).withValues(alpha: 0.95),
+          border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'ACTIVE SYNC',
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                        color: Colors.blueAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      state.isSyncPaused ? 'PAUSED' : 'IN PROGRESS',
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _IconButton(
+                      icon: state.isSyncPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      onPressed: () => notifier.togglePauseSyncing(),
+                      tooltip: state.isSyncPaused ? 'Resume' : 'Pause',
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                    const SizedBox(width: 8),
+                    _IconButton(
+                      icon: Icons.stop_rounded,
+                      onPressed: () => notifier.stopSyncing(),
+                      color: Colors.redAccent.withValues(alpha: 0.6),
+                      tooltip: 'Abort',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Overall Progress Metric
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                SizedBox(
+                  width: 80,
+                  child: Text(
+                    (state.syncProgress * 100).toStringAsFixed(1),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Text(
+                  '%',
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Overall Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: LinearProgressIndicator(
+                value: state.syncProgress,
+                backgroundColor: Colors.white.withValues(alpha: 0.05),
+                valueColor: const AlwaysStoppedAnimation(Colors.blueAccent),
+                minHeight: 8,
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Metrics Grid
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _buildMetricWidget('SPEED', _formatSpeed(state.syncSpeed), LucideIcons.zap, Colors.amberAccent)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildMetricWidget('ETA', state.remainingTime != null ? _formatDuration(state.remainingTime!) : '--', LucideIcons.timer, Colors.cyanAccent)),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(height: 1, color: Colors.white10),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(child: _buildMetricWidget('FILES', '${state.syncedCount} / ${state.syncTotalCount}', LucideIcons.fileCheck, Colors.greenAccent)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildMetricWidget('SIZE', '${_formatBytes(state.syncedBytes)} / ${_formatBytes(state.syncTotalBytes)}', LucideIcons.database, Colors.blueAccent)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // CURRENT FILE DETAILS
+            if (state.syncingFileName != null && state.syncingFileName!.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              const Divider(height: 1, color: Colors.white10),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(LucideIcons.refreshCcw, size: 12, color: Colors.purpleAccent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      state.syncingFileName!,
+                      style: const TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (state.syncingFileTotalBytes > 0)
+                    Text(
+                      '${(state.syncingFileBytes / state.syncingFileTotalBytes * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purpleAccent,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (state.syncingFileTotalBytes > 0) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: state.syncingFileBytes / state.syncingFileTotalBytes,
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    valueColor: const AlwaysStoppedAnimation(Colors.purpleAccent),
+                    minHeight: 4,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${_formatBytes(state.syncingFileBytes)} of ${_formatBytes(state.syncingFileTotalBytes)}',
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 9,
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSyncReport(SyncState state, SyncNotifier notifier) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F0F0F).withValues(alpha: 0.98),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        border: Border(top: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.1), width: 1.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 30,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.greenAccent.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 28),
+          ),
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'SYNC COMPLETE',
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.greenAccent,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${state.syncedFilesCount} files synced successfully (${_formatBytes(state.syncedBytes)})',
+                  style: TextStyle(
+                    fontFamily: 'Fredoka',
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          ElevatedButton(
+            onPressed: () => notifier.clearSyncProgress(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: const Text(
+              'Dismiss',
+              style: TextStyle(fontFamily: 'Fredoka', fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricWidget(String label, String value, IconData icon, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 10, color: color.withValues(alpha: 0.6)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Fredoka',
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+                color: Colors.white.withValues(alpha: 0.2),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _formatSpeed(double bytesPerSecond) {
+    if (bytesPerSecond <= 0) return '0 B/s';
+    const suffixes = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s'];
     int i = 0;
-    double size = bytes.toDouble();
-    while (size >= 1024 && i < suffixes.length - 1) {
-      size /= 1024;
+    double speed = bytesPerSecond;
+    while (speed >= 1024 && i < suffixes.length - 1) {
+      speed /= 1024;
       i++;
     }
-    return '${size.toStringAsFixed(i == 0 ? 0 : 1)} ${suffixes[i]}';
+    return '${speed.toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  String _formatDuration(Duration duration) {
+    if (duration.isNegative) return '--';
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String hours = twoDigits(duration.inHours);
+    String minutes = twoDigits(duration.inMinutes.remainder(60));
+    String seconds = twoDigits(duration.inSeconds.remainder(60));
+
+    if (duration.inHours > 0) {
+      return '$hours:${minutes}h';
+    } else if (duration.inMinutes > 0) {
+      return '$minutes:${seconds}m';
+    } else {
+      return '${seconds}s';
+    }
+  }
+
+class _IconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String tooltip;
+  final Color? color;
+
+  const _IconButton({
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: color ?? Colors.white.withValues(alpha: 0.8)),
+          ),
+        ),
+      ),
+    );
   }
 }
 
+String _formatBytes(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  int i = 0;
+  double size = bytes.toDouble();
+  while (size >= 1024 && i < suffixes.length - 1) {
+    size /= 1024;
+    i++;
+  }
+  return '${size.toStringAsFixed(i == 0 ? 0 : 1)} ${suffixes[i]}';
+}
+
+
+
+
+
 class _SyncItemTile extends ConsumerStatefulWidget {
   final SyncItem item;
-  const _SyncItemTile({required this.item});
+  const _SyncItemTile({super.key, required this.item});
 
   @override
   ConsumerState<_SyncItemTile> createState() => _SyncItemTileState();
@@ -1042,8 +1381,7 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: 200.ms,
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
           color: _isHovered
@@ -1070,6 +1408,7 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
                     child: Text(
                       widget.item.relativePath,
                       style: TextStyle(
+                        fontFamily: 'Fredoka',
                         fontSize: 12,
                         color: _isHovered
                             ? Colors.white
@@ -1084,8 +1423,9 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
                   if (widget.item.type == SyncType.file && widget.item.fileSize > 0) ...[
                     const SizedBox(width: 8),
                     Text(
-                      _RightSidebar._formatBytes(widget.item.fileSize),
+                      _formatBytes(widget.item.fileSize),
                       style: TextStyle(
+                        fontFamily: 'Fredoka',
                         fontSize: 10,
                         color: Colors.white.withValues(alpha: 0.3),
                       ),
@@ -1152,6 +1492,7 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
       child: Text(
         label,
         style: TextStyle(
+          fontFamily: 'Fredoka',
           fontSize: 8,
           fontWeight: FontWeight.bold,
           color: color,
@@ -1222,6 +1563,7 @@ class FileContentSyncScreen extends ConsumerWidget {
                     Text(
                       'File Content Sync',
                       style: TextStyle(
+                        fontFamily: 'Fredoka',
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
@@ -1229,7 +1571,7 @@ class FileContentSyncScreen extends ConsumerWidget {
                     ),
                     Text(
                       'Choose a file sync tool',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                      style: TextStyle(fontFamily: 'Fredoka', color: Colors.grey, fontSize: 14),
                     ),
                   ],
                 ),

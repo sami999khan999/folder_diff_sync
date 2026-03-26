@@ -68,8 +68,12 @@ class SyncState {
   final bool isSyncStopped;
   final bool isBackgroundScanComplete;
   final int diffCount;
-  final SidebarSortOrder sidebarSortOrder;
   final String sidebarSearchQuery;
+  final SidebarSortOrder sidebarSortOrder;
+  final int syncingFileBytes;
+  final int syncingFileTotalBytes;
+  final double syncSpeed; // Bytes per second
+  final Duration? remainingTime;
   final List<SyncItem> sidebarItems;
 
   SyncState({
@@ -103,6 +107,10 @@ class SyncState {
     this.diffCount = 0,
     this.sidebarSearchQuery = '',
     this.sidebarSortOrder = SidebarSortOrder.name,
+    this.syncingFileBytes = 0,
+    this.syncingFileTotalBytes = 0,
+    this.syncSpeed = 0.0,
+    this.remainingTime,
     this.sidebarItems = const [],
   });
 
@@ -137,6 +145,10 @@ class SyncState {
     int? diffCount,
     String? sidebarSearchQuery,
     SidebarSortOrder? sidebarSortOrder,
+     int? syncingFileBytes,
+    int? syncingFileTotalBytes,
+    double? syncSpeed,
+    Duration? remainingTime,
     List<SyncItem>? sidebarItems,
   }) {
     return SyncState(
@@ -170,6 +182,10 @@ class SyncState {
       diffCount: diffCount ?? this.diffCount,
       sidebarSearchQuery: sidebarSearchQuery ?? this.sidebarSearchQuery,
       sidebarSortOrder: sidebarSortOrder ?? this.sidebarSortOrder,
+      syncingFileBytes: syncingFileBytes ?? this.syncingFileBytes,
+      syncingFileTotalBytes: syncingFileTotalBytes ?? this.syncingFileTotalBytes,
+      syncSpeed: syncSpeed ?? this.syncSpeed,
+      remainingTime: remainingTime ?? this.remainingTime,
       sidebarItems: sidebarItems ?? this.sidebarItems,
     );
   }
@@ -271,7 +287,7 @@ class SyncNotifier extends Notifier<SyncState> {
     } else {
       final prefix = '$relativePath${Platform.pathSeparator}';
       for (final item in _allItems) {
-        if ((item.relativePath == relativePath || item.relativePath.startsWith(prefix)) && (selected ? _isItemSyncable(item) : true)) {
+        if (item.relativePath == relativePath || item.relativePath.startsWith(prefix)) {
           item.isSelected = selected;
         }
       }
@@ -300,11 +316,7 @@ class SyncNotifier extends Notifier<SyncState> {
     if (query.isEmpty) {
       // 1. Update all items in the flat list
       for (var item in _allItems) {
-        if (_isItemSyncable(item)) {
-          item.isSelected = selected;
-        } else {
-          item.isSelected = false; // Force false for identical items
-        }
+        item.isSelected = selected;
       }
 
       // 2. Clear prefixes if deselecting, or mark root if selecting
@@ -327,7 +339,7 @@ class SyncNotifier extends Notifier<SyncState> {
         item.relativePath.toLowerCase().contains(query)).toList();
       
       for (var item in filtered) {
-        if (item.isSelected != selected && (selected ? _isItemSyncable(item) : true)) {
+        if (item.isSelected != selected) {
           item.isSelected = selected;
           totalCount += selected ? 1 : -1;
           totalSize += selected ? item.fileSize : -item.fileSize;
@@ -341,7 +353,7 @@ class SyncNotifier extends Notifier<SyncState> {
             final prefix = '${item.relativePath}${Platform.pathSeparator}';
             for (final child in _allItems) {
               if (child.relativePath.startsWith(prefix)) {
-                if (child.isSelected != selected && (selected ? _isItemSyncable(child) : true)) {
+                if (child.isSelected != selected) {
                   child.isSelected = selected;
                   if (child.type == SyncType.file) {
                     totalCount += selected ? 1 : -1;
@@ -378,10 +390,9 @@ class SyncNotifier extends Notifier<SyncState> {
 
   void _updateSelectionRecursive(List<SyncTreeNode> nodes, bool selected) {
     for (var node in nodes) {
-      bool canSelect = node.item == null || _isItemSyncable(node.item!);
-      node.isSelected = selected && canSelect;
+      node.isSelected = selected;
       if (node.item != null) {
-        node.item!.isSelected = selected && canSelect;
+        node.item!.isSelected = selected;
       }
       if (node.children.isNotEmpty) {
         _updateSelectionRecursive(node.children, selected);
@@ -847,72 +858,55 @@ class SyncNotifier extends Notifier<SyncState> {
 
   void toggleNodeSelection(SyncTreeNode node, bool selected) {
     if (state.isSyncing) return;
-    if (node.isSelected == selected) return;
 
-    int countDelta = 0;
-    int sizeDelta = 0;
+    final prefix = '${node.relativePath}${Platform.pathSeparator}';
 
-    void updateRecursive(SyncTreeNode n) {
-      if (n.item != null && n.item!.isSelected != selected) {
-        if (selected && !_isItemSyncable(n.item!)) {
-          // Skip selecting identical
-        } else {
-          n.item!.isSelected = selected;
-          if (n.item!.type == SyncType.file) {
-            countDelta += selected ? 1 : -1;
-            sizeDelta += selected ? n.item!.fileSize : -n.item!.fileSize;
-          }
-        }
-      }
-      n.isSelected = selected && (n.item == null || _isItemSyncable(n.item!));
-      for (var child in n.children) {
-        updateRecursive(child);
+    // 1. Update ALL items in the flat list that match this node or are descendants
+    for (final item in _allItems) {
+      if (item.relativePath == node.relativePath || item.relativePath.startsWith(prefix)) {
+        item.isSelected = selected;
       }
     }
 
-    updateRecursive(node);
+    // 2. Recursively update all tree nodes
+    void updateTreeRecursive(SyncTreeNode n) {
+      n.isSelected = selected;
+      if (n.item != null) {
+        n.item!.isSelected = selected;
+      }
+      for (var child in n.children) {
+        updateTreeRecursive(child);
+      }
+    }
+    updateTreeRecursive(node);
+
+    // 3. Update parent selection states
     _updateParentSelection(state.treeNodes);
 
-    // Also update all items in the flat list that might not be in the tree yet
-    // but match the prefix (for safety)
-    final prefix = '${node.relativePath}${Platform.pathSeparator}';
-    for (final item in _allItems) {
-      if (item.relativePath.startsWith(prefix) && item.isSelected != selected) {
-        // Find if this item is ALREADY covered by tree recursion
-        if (!_nodesMap.containsKey(item.relativePath)) {
-           if (selected && !_isItemSyncable(item)) {
-             // Skip
-           } else {
-             item.isSelected = selected;
-             if (item.type == SyncType.file) {
-               countDelta += selected ? 1 : -1;
-               sizeDelta += selected ? item.fileSize : -item.fileSize;
-             }
-           }
-        }
-      }
-    }
-
-    // Track prefix for future background scan items
+    // 4. Track prefix for future background scan items
     if (selected) {
       _selectedPrefixes.add(node.relativePath);
     } else {
       _selectedPrefixes.remove(node.relativePath);
     }
 
+    // 5. Recalculate counts from scratch to avoid drift
+    final selectedFiles = _allItems.where((e) => e.isSelected && e.type == SyncType.file);
+    final newSelectedCount = selectedFiles.length;
+    final newTotalSize = selectedFiles.fold<int>(0, (sum, item) => sum + item.fileSize);
+
     state = state.copyWith(
-      selectedCount: state.selectedCount + countDelta,
-      totalSelectedSize: state.totalSelectedSize + sizeDelta,
+      selectedCount: newSelectedCount,
+      totalSelectedSize: newTotalSize,
       itemsRevision: state.itemsRevision + 1,
     );
     _rebuildSidebarCache();
   }
 
   void _setSelectionRecursive(SyncTreeNode node, bool selected) {
-    bool canSelect = node.item == null || _isItemSyncable(node.item!);
-    node.isSelected = selected && canSelect;
+    node.isSelected = selected;
     if (node.item != null) {
-      node.item!.isSelected = selected && canSelect;
+      node.item!.isSelected = selected;
     }
     for (var child in node.children) {
       _setSelectionRecursive(child, selected);
@@ -937,7 +931,7 @@ class SyncNotifier extends Notifier<SyncState> {
   Future<void> sync() async {
     if (_allItems.isEmpty) return;
 
-    final itemsToSync = _allItems.where((e) => e.isSelected).toList();
+    final itemsToSync = _allItems.where((e) => e.isSelected && e.type == SyncType.file).toList();
     if (itemsToSync.isEmpty) return;
 
     int totalBytes = 0;
@@ -973,16 +967,32 @@ class SyncNotifier extends Notifier<SyncState> {
       itemsToSync,
       shouldAbort: () => state.isSyncStopped,
       shouldPause: () => state.isSyncPaused,
-      onProgress: (item, count, total, bytesCopied, totalB) {
-        if (item.type == SyncType.file) {
+      onProgress: (item, count, total, bytesCopied, totalB, itemBytesCopied) {
+        if (item.type == SyncType.file && itemBytesCopied == 0) {
           filesDone++;
-        } else {
+        } else if (item.type == SyncType.directory) {
           foldersDone++;
         }
 
         final now = DateTime.now();
-        // Throttle updates to 100ms to prevent UI lag
-        if (now.difference(lastUpdate).inMilliseconds > 100 || count == total) {
+        final diffMs = now.difference(lastUpdate).inMilliseconds;
+        
+        // Update at most 100ms or at the end
+        if (diffMs > 100 || count == total) {
+          final int bytesDelta = bytesCopied - state.syncedBytes;
+          final double currentSpeed = diffMs > 0 ? (bytesDelta / (diffMs / 1000.0)) : 0;
+          
+          // Smooth speed calculation (Moving average)
+          final double smoothedSpeed = state.syncSpeed == 0 
+              ? currentSpeed 
+              : (state.syncSpeed * 0.7 + currentSpeed * 0.3);
+
+          Duration? remaining;
+          if (smoothedSpeed > 1024) { // Only show ETA if we have decent speed data
+            final remainingBytes = totalB - bytesCopied;
+            remaining = Duration(seconds: (remainingBytes / smoothedSpeed).round());
+          }
+
           state = state.copyWith(
             syncProgress: totalB > 0 ? bytesCopied / totalB : (total > 0 ? count / total : 1.0),
             syncingFileName: item.relativePath,
@@ -990,6 +1000,10 @@ class SyncNotifier extends Notifier<SyncState> {
             syncedBytes: bytesCopied,
             syncedFilesCount: filesDone,
             syncedFoldersCount: foldersDone,
+            syncingFileBytes: itemBytesCopied,
+            syncingFileTotalBytes: item.fileSize,
+            syncSpeed: smoothedSpeed,
+            remainingTime: remaining,
           );
           lastUpdate = now;
         }

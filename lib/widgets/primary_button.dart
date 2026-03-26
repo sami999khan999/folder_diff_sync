@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class PrimaryButton extends StatelessWidget {
   final VoidCallback? onPressed;
@@ -62,8 +61,6 @@ class PrimaryButton extends StatelessWidget {
               ),
             ),
           ),
-        )
-        .animate(target: onPressed == null ? 0 : 1)
-        .scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1));
+        );
   }
 }

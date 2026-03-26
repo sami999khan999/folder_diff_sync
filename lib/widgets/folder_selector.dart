@@ -125,6 +125,7 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                 Text(
                   widget.title,
                   style: const TextStyle(
+                    fontFamily: 'Fredoka',
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                     color: Colors.white,
@@ -147,10 +148,10 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                     },
                     child: TextField(
                       controller: _controller,
-                      style: const TextStyle(fontSize: 13, color: Colors.white),
+                      style: const TextStyle(fontFamily: 'Fredoka', fontSize: 13, color: Colors.white),
                       decoration: InputDecoration(
                         hintText: widget.hintText,
-                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                        hintStyle: TextStyle(fontFamily: 'Fredoka', color: Colors.white.withValues(alpha: 0.3)),
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                         filled: true,

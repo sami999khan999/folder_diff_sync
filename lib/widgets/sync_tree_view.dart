@@ -11,6 +11,7 @@ class SyncTreeView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final treeNodes = ref.watch(syncProvider.select((s) => s.treeNodes));
+    ref.watch(syncProvider.select((s) => s.itemsRevision)); // Force rebuild on any selection change
     final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
 
     if (treeNodes.isEmpty) {
@@ -23,7 +24,7 @@ class SyncTreeView extends ConsumerWidget {
               ? 'No items to sync.\n${syncState.isTwoWaySync ? "Both folders are identical." : "Source folder is empty or matches target."}'
               : 'No items to display.\nSelect source and target folders.',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.grey),
+          style: const TextStyle(fontFamily: 'Fredoka', color: Colors.grey, fontSize: 13),
         ),
       );
     }
@@ -78,12 +79,11 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
           child: InkWell(
             onTap: widget.node.isDirectory
                 ? () => notifier.expandAndLoadNode(widget.node)
-                : (widget.disabled || !widget.node.needsSync ? null : () => notifier.toggleNodeSelection(widget.node, !widget.node.isSelected)),
+                : (widget.disabled ? null : () => notifier.toggleNodeSelection(widget.node, !widget.node.isSelected)),
             hoverColor: Colors.transparent,
             splashColor: hoverTint.withValues(alpha: 0.1),
             highlightColor: Colors.transparent,
-            child: AnimatedContainer(
-              duration: 200.ms,
+            child: Container(
               decoration: BoxDecoration(
                 color: _isHovered
                     ? hoverTint.withValues(alpha: 0.08)
@@ -95,55 +95,72 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                 ),
               ),
               padding: EdgeInsets.only(
-                left: 16.0 + (widget.node.depth * 24.0),
-                right: 16.0,
-                top: 8.0,
-                bottom: 8.0,
+                left: 12.0 + (widget.node.depth * 28.0),
+                right: 20.0,
+                top: 10.0,
+                bottom: 10.0,
               ),
-              child: Row(
+              child: Stack(
                 children: [
-                  if (widget.node.isDirectory)
-                    Icon(
-                      widget.node.isExpanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
-                      size: 16,
-                      color: Colors.grey,
-                    )
-                  else
-                    const SizedBox(width: 16),
-                  const SizedBox(width: 8),
-                  _CustomCheckbox(
-                    value: widget.node.isSelected,
-                    disabled: widget.disabled || !widget.node.needsSync,
-                    onChanged: (val) => notifier.toggleNodeSelection(widget.node, val),
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    widget.node.isDirectory ? LucideIcons.folder : LucideIcons.file,
-                    size: 20,
-                    color: statusColor,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            widget.node.name,
-                            style: TextStyle(
-                              fontWeight: widget.node.needsSync ? FontWeight.bold : FontWeight.normal,
-                              color: widget.node.needsSync ? Colors.blueGrey.shade100 : Colors.blueGrey.shade100.withValues(alpha: 0.5),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (widget.node.item != null) ...[
-                          const SizedBox(width: 8),
-                          _buildOwnershipLine(widget.node.item!.status),
-                        ],
-                      ],
+                  // Indentation Guide Line
+                  if (widget.node.depth > 0)
+                    Positioned(
+                      left: -14,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 1.5,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
                     ),
+                  Row(
+                    children: [
+                      if (widget.node.isDirectory)
+                        Icon(
+                          widget.node.isExpanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
+                          size: 14,
+                          color: (widget.node.needsSync ? statusColor : Colors.grey).withValues(alpha: 0.6),
+                        )
+                      else
+                        const SizedBox(width: 14),
+                      const SizedBox(width: 10),
+                      _CustomCheckbox(
+                        value: widget.node.isSelected,
+                        disabled: widget.disabled,
+                        onChanged: (val) => notifier.toggleNodeSelection(widget.node, val),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(
+                        widget.node.isDirectory ? LucideIcons.folder : LucideIcons.file,
+                        size: 18,
+                        color: statusColor,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                widget.node.name,
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontSize: 14,
+                                  fontWeight: widget.node.needsSync ? FontWeight.w600 : FontWeight.normal,
+                                  color: widget.node.needsSync ? Colors.white : Colors.white.withValues(alpha: 0.4),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (widget.node.item != null) ...[
+                              const SizedBox(width: 10),
+                              _buildOwnershipLine(widget.node.item!.status),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (widget.node.item != null) _buildStatusBadge(widget.node.item!.status),
+                    ],
                   ),
-                  if (widget.node.item != null) _buildStatusBadge(widget.node.item!.status),
                 ],
               ),
             ),
@@ -167,6 +184,7 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                   Text(
                     'Loading...',
                     style: TextStyle(
+                      fontFamily: 'Fredoka',
                       fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.4),
                     ),
@@ -174,6 +192,14 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
                 ],
               ),
             ),
+          // Render child nodes
+          ...widget.node.children
+              .take(widget.node.childLimit)
+              .map((child) => _TreeNodeWidget(
+                    node: child,
+                    disabled: widget.disabled,
+                    key: ValueKey(child.relativePath),
+                  )),
           if (widget.node.children.length > widget.node.childLimit)
             _buildLoadMoreNodes(context, notifier, widget.node),
         ],
@@ -193,6 +219,7 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
             Text(
               'Load ${node.children.length - node.childLimit} more...',
               style: const TextStyle(
+                fontFamily: 'Fredoka',
                 fontSize: 12,
                 color: Colors.blueAccent,
                 fontWeight: FontWeight.bold,
@@ -272,7 +299,7 @@ Widget _buildOwnershipIndicator(String label, Color color) {
     ),
     child: Text(
       label,
-      style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: color),
+      style: TextStyle(fontFamily: 'Fredoka', fontSize: 8, fontWeight: FontWeight.bold, color: color),
     ),
   );
 }
@@ -323,8 +350,14 @@ Widget _buildStatusBadge(FileStatus status) {
       border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
     child: Text(
-      label,
-      style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      label.toUpperCase(),
+      style: TextStyle(
+        fontFamily: 'Fredoka',
+        color: color,
+        fontSize: 9,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.5,
+      ),
     ),
   );
 }

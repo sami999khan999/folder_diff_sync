@@ -1,0 +1,23 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260326204927
+Username: WAY-WISE\waywi
+RunAs User: WAY-WISE\waywi
+Configuration Name: 
+Machine: WAY-WISE (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -Command Stop-Transcript; Start-Transcript -Path 'e:\draft\folder_diff_sync\flutter_run_logs.txt'; Start-Sleep -Seconds 5; Stop-Transcript
+Process ID: 1700
+PSVersion: 5.1.26100.7920
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7920
+BuildVersion: 10.0.26100.7920
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is e:\draft\folder_diff_sync\flutter_run_logs.txt
+**********************
+Windows PowerShell transcript end
+End time: 20260326204932
+**********************

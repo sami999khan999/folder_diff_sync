@@ -1,0 +1,47 @@
+Analyzing folder_diff_sync...                                   
+
+warning - Unused import: 'widgets/primary_button.dart' - lib\main.dart:11:8 - unused_import
+warning - The value of the local variable 'state' isn't used - lib\main.dart:315:11 - unused_local_variable
+  error - Expected an identifier - lib\main.dart:363:17 - missing_identifier
+  error - Expected to find ']' - lib\main.dart:363:17 - expected_token
+  error - Expected to find ';' - lib\main.dart:366:11 - expected_token
+warning - Dead code - lib\main.dart:366:12 - dead_code
+  error - Expected an identifier - lib\main.dart:366:12 - missing_identifier
+  error - Expected to find ';' - lib\main.dart:366:12 - expected_token
+  error - Unexpected text ';' - lib\main.dart:366:12 - unexpected_token
+  error - Expected an identifier - lib\main.dart:367:9 - missing_identifier
+  error - Expected to find ';' - lib\main.dart:367:9 - expected_token
+  error - Unexpected text ';' - lib\main.dart:367:9 - unexpected_token
+  error - Expected an identifier - lib\main.dart:367:10 - missing_identifier
+  error - Expected to find ';' - lib\main.dart:367:10 - expected_token
+  error - Unexpected text ';' - lib\main.dart:367:10 - unexpected_token
+  error - Expected an identifier - lib\main.dart:368:7 - missing_identifier
+  error - Expected to find ';' - lib\main.dart:368:7 - expected_token
+  error - Unexpected text ';' - lib\main.dart:368:7 - unexpected_token
+  error - Expected an identifier - lib\main.dart:368:8 - missing_identifier
+  error - Expected to find ';' - lib\main.dart:368:8 - expected_token
+  error - Unexpected text ';' - lib\main.dart:368:8 - unexpected_token
+  error - Expected an identifier - lib\main.dart:369:5 - missing_identifier
+  error - Unexpected text ';' - lib\main.dart:369:5 - unexpected_token
+   info - Unnecessary empty statement - lib\main.dart:369:6 - empty_statements
+warning - The declaration '_buildSidebarCard' isn't referenced - lib\main.dart:395:10 - unused_element
+warning - The value of the local variable 'showDashboard' isn't used - lib\main.dart:561:11 - unused_local_variable
+warning - The declaration '_buildSyncDashboard' isn't referenced - lib\main.dart:790:10 - unused_element
+   info - Unnecessary use of string interpolation - lib\main.dart:863:19 - unnecessary_string_interpolations
+warning - The declaration '_buildSyncReport' isn't referenced - lib\main.dart:996:10 - unused_element
+   info - Don't invoke 'print' in production code - lib\services\native_file_transfer.dart:54:7 - avoid_print
+   info - The imported package 'test' isn't a dependency of the importing package - test\benchmark_copy.dart:3:8 - depend_on_referenced_packages
+   info - The local variable '_bufferSize' starts with an underscore - test\benchmark_copy.dart:6:13 - no_leading_underscores_for_local_identifiers
+   info - Don't invoke 'print' in production code - test\benchmark_copy.dart:18:7 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy.dart:25:7 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy.dart:38:7 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy.dart:59:7 - avoid_print
+   info - The local variable '_bufferSize' starts with an underscore - test\benchmark_copy_simple.dart:5:13 - no_leading_underscores_for_local_identifiers
+   info - Don't invoke 'print' in production code - test\benchmark_copy_simple.dart:11:3 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy_simple.dart:18:3 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy_simple.dart:20:3 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy_simple.dart:24:3 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy_simple.dart:26:3 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy_simple.dart:41:3 - avoid_print
+   info - Don't invoke 'print' in production code - test\benchmark_copy_simple.dart:48:3 - avoid_print
+

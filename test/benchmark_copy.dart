@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print, no_leading_underscores_for_local_identifiers, depend_on_referenced_packages
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:test/test.dart';

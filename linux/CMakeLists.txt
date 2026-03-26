@@ -74,6 +74,19 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Build Rust native library
+add_custom_command(
+  OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/../native/file_transfer_rs/target/release/libfile_transfer_rs.so"
+  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/../native/build_rust.sh"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../native"
+  COMMENT "Building Rust native library..."
+  VERBATIM
+)
+add_custom_target(build_rust_lib ALL
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../native/file_transfer_rs/target/release/libfile_transfer_rs.so"
+)
+add_dependencies(${BINARY_NAME} build_rust_lib)
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
@@ -105,6 +118,10 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endforeach(bundled_library)
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../native/file_transfer_rs/target/release/libfile_transfer_rs.so"
+  DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
 
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/linux/")
