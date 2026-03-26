@@ -1028,16 +1028,15 @@ class _RightSidebar extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             // Overall Progress Metric
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                SizedBox(
-                  width: 80,
-                  child: Text(
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
                     (state.syncProgress * 100).toStringAsFixed(1),
-                    textAlign: TextAlign.right,
                     style: const TextStyle(
                       fontFamily: 'Fredoka',
                       fontSize: 42,
@@ -1046,18 +1045,18 @@ class _RightSidebar extends ConsumerWidget {
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                const Text(
-                  '%',
-                  style: TextStyle(
-                    fontFamily: 'Fredoka',
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blueAccent,
+                  const SizedBox(width: 4),
+                  const Text(
+                    '%',
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             // Overall Progress Bar
@@ -1170,10 +1169,10 @@ class _RightSidebar extends ConsumerWidget {
 
   Widget _buildSyncReport(SyncState state, SyncNotifier notifier) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       decoration: BoxDecoration(
         color: const Color(0xFF0F0F0F).withValues(alpha: 0.98),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: BorderRadius.zero,
         border: Border(top: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.1), width: 1.5)),
         boxShadow: [
           BoxShadow(
@@ -1186,54 +1185,56 @@ class _RightSidebar extends ConsumerWidget {
       child: Row(
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: Colors.greenAccent.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 28),
+            child: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 22),
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   'SYNC COMPLETE',
                   style: TextStyle(
                     fontFamily: 'Fredoka',
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                    fontSize: 13,
                     color: Colors.greenAccent,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 2),
                 Text(
                   '${state.syncedFilesCount} files synced successfully (${_formatBytes(state.syncedBytes)})',
                   style: TextStyle(
                     fontFamily: 'Fredoka',
-                    fontSize: 13,
+                    fontSize: 11,
                     color: Colors.white.withValues(alpha: 0.4),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 12),
           ElevatedButton(
             onPressed: () => notifier.clearSyncProgress(),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white.withValues(alpha: 0.05),
               foregroundColor: Colors.white,
               elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: const Text(
               'Dismiss',
-              style: TextStyle(fontFamily: 'Fredoka', fontSize: 13, fontWeight: FontWeight.bold),
+              style: TextStyle(fontFamily: 'Fredoka', fontSize: 12, fontWeight: FontWeight.bold),
             ),
           ),
         ],
