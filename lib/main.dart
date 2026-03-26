@@ -353,129 +353,110 @@ class _LeftSidebar extends ConsumerWidget {
           const SizedBox(height: 16),
           const FolderSelectorRow(),
           const SizedBox(height: 32),
-          // 2-Way Sync Toggle
-          Consumer(
-            builder: (context, ref, _) {
-              final isTwoWay = ref.watch(syncProvider.select((s) => s.isTwoWaySync));
-              final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
-              
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (isTwoWay ? Colors.purpleAccent : Colors.grey).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        isTwoWay ? LucideIcons.repeat : LucideIcons.arrowRight,
-                        size: 16,
-                        color: isTwoWay ? Colors.purpleAccent : Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '2-Way Sync',
-                            style: TextStyle(
-                              fontFamily: 'Fredoka',
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            isTwoWay ? 'Sync Both' : 'Push Only',
-                            style: TextStyle(
-                              fontFamily: 'Fredoka',
-                              fontSize: 11,
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: isTwoWay,
-                      onChanged: isSyncing ? null : (val) => ref.read(syncProvider.notifier).toggleTwoWaySync(val),
-                      activeThumbColor: Colors.purpleAccent,
-                      activeTrackColor: Colors.purpleAccent.withValues(alpha: 0.2),
-                      inactiveThumbColor: Colors.grey,
-                      inactiveTrackColor: Colors.white10,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
           const Spacer(),
-          // Sync Now Button
+          // Consolidated Sync Controls Section
           Consumer(
             builder: (context, ref, _) {
-              final isSyncing = ref.watch(syncProvider.select((s) => s.isSyncing));
-              final syncProgress = ref.watch(syncProvider.select((s) => s.syncProgress));
-              final selectedCount = ref.watch(syncProvider.select((s) => s.selectedCount));
+              final state = ref.watch(syncProvider);
+              final notifier = ref.read(syncProvider.notifier);
+              final isTwoWay = state.isTwoWaySync;
+              final isSyncing = state.isSyncing;
+              final selectedCount = state.selectedCount;
               
-              if (isSyncing) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: syncProgress,
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
-                          valueColor: const AlwaysStoppedAnimation(Colors.blueAccent),
-                          minHeight: 6,
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 2-Way Sync Toggle
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: (isTwoWay ? Colors.purpleAccent : Colors.grey).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            isTwoWay ? LucideIcons.repeat : LucideIcons.arrowRight,
+                            size: 16,
+                            color: isTwoWay ? Colors.purpleAccent : Colors.grey,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${(syncProgress * 100).toStringAsFixed(1)}% syncing...',
-                        style: TextStyle(
-                          fontFamily: 'Fredoka',
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.5),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '2-Way Sync',
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                isTwoWay ? 'Sync Both' : 'Push Only',
+                                style: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        Switch(
+                          value: isTwoWay,
+                          onChanged: isSyncing ? null : (val) => notifier.toggleTwoWaySync(val),
+                          mouseCursor: isSyncing ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
+                          activeThumbColor: Colors.purpleAccent,
+                          activeTrackColor: Colors.purpleAccent.withValues(alpha: 0.2),
+                          inactiveThumbColor: Colors.grey,
+                          inactiveTrackColor: Colors.white10,
+                        ),
+                      ],
+                    ),
                   ),
-                );
-              }
-              if (selectedCount > 0) {
-                return Padding(
-                  padding: const EdgeInsets.all(0),
-                  child: Container(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: ElevatedButton(
-                      onPressed: () => ref.read(syncProvider.notifier).sync(),
+                  
+                  if (selectedCount > 0 || isSyncing) ...[
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: isSyncing ? null : () => notifier.sync(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.blueAccent.withValues(alpha: 0.3),
+                        disabledForegroundColor: Colors.white.withValues(alpha: 0.5),
                         minimumSize: const Size(double.infinity, 52),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 8,
+                        elevation: isSyncing ? 0 : 8,
                         shadowColor: Colors.blueAccent.withValues(alpha: 0.5),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(LucideIcons.refreshCw, size: 18),
+                          if (isSyncing)
+                            const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(Colors.white),
+                              ),
+                            )
+                          else
+                            const Icon(LucideIcons.refreshCw, size: 18),
                           const SizedBox(width: 10),
                           Text(
-                            'Sync $selectedCount Items',
+                            isSyncing ? 'Syncing...' : 'Sync $selectedCount Items',
                             style: const TextStyle(
                               fontFamily: 'Fredoka',
                               fontSize: 14,
@@ -485,10 +466,9 @@ class _LeftSidebar extends ConsumerWidget {
                         ],
                       ),
                     ),
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
+                  ],
+                ],
+              );
             },
           ),
         ],
@@ -557,6 +537,9 @@ class _MiddleSection extends ConsumerWidget {
                         onPressed: state.isComparing || state.isBackgroundScanning || state.isSyncing
                             ? null
                             : () => notifier.reload(),
+                        mouseCursor: (state.isComparing || state.isBackgroundScanning || state.isSyncing)
+                            ? SystemMouseCursors.forbidden
+                            : SystemMouseCursors.click,
                         icon: Icon(
                           LucideIcons.refreshCw,
                           size: 16,
@@ -1123,41 +1106,51 @@ class _RightSidebar extends ConsumerWidget {
                     ),
                   ),
                   if (state.syncingFileTotalBytes > 0)
-                    Text(
-                      '${(state.syncingFileBytes / state.syncingFileTotalBytes * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(
-                        fontFamily: 'Fredoka',
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.purpleAccent,
+                    Opacity(
+                      opacity: state.syncingFileTotalBytes >= 50 * 1024 * 1024 ? 1.0 : 0.0,
+                      child: Text(
+                        '${(state.syncingFileBytes / state.syncingFileTotalBytes * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontFamily: 'Fredoka',
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purpleAccent,
+                        ),
                       ),
                     ),
                 ],
               ),
               const SizedBox(height: 8),
               if (state.syncingFileTotalBytes > 0) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: state.syncingFileBytes / state.syncingFileTotalBytes,
-                    backgroundColor: Colors.white.withValues(alpha: 0.05),
-                    valueColor: const AlwaysStoppedAnimation(Colors.purpleAccent),
-                    minHeight: 4,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${_formatBytes(state.syncingFileBytes)} of ${_formatBytes(state.syncingFileTotalBytes)}',
-                      style: TextStyle(
-                        fontFamily: 'Fredoka',
-                        fontSize: 9,
-                        color: Colors.white.withValues(alpha: 0.3),
+                Opacity(
+                  opacity: state.syncingFileTotalBytes >= 50 * 1024 * 1024 ? 1.0 : 0.0,
+                  child: Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: state.syncingFileBytes / state.syncingFileTotalBytes,
+                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          valueColor: const AlwaysStoppedAnimation(Colors.purpleAccent),
+                          minHeight: 4,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${_formatBytes(state.syncingFileBytes)} of ${_formatBytes(state.syncingFileTotalBytes)}',
+                            style: TextStyle(
+                              fontFamily: 'Fredoka',
+                              fontSize: 9,
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
