@@ -7,7 +7,6 @@
 #define MyAppURL "https://github.com/sami999khan999/folder_diff_sync"
 #define MyAppExeName "folder_diff_sync.exe"
 #define MyAppIconPath "..\windows\runner\resources\app_icon.ico"
-
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
@@ -36,11 +35,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-
 [Files]
-Source: "e:\draft\folder_diff_sync\installer\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "e:\draft\folder_diff_sync\installer\flutter_windows.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "e:\draft\folder_diff_sync\installer\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "*.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "native_assets.json"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]

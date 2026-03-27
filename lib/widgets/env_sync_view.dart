@@ -116,6 +116,8 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
               ),
               const SizedBox(width: 12),
               Expanded(child: _buildLogo()),
+              const SizedBox(width: 8),
+              const _HelpButton(),
             ],
           ),
           const SizedBox(height: 40),
@@ -793,4 +795,149 @@ class _HideValuesFormatter extends TextInputFormatter {
 
     return newValue;
   }
+}
+
+class _HelpButton extends StatelessWidget {
+  const _HelpButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: () => _showEnvHelpDialog(context),
+      icon: const Icon(LucideIcons.helpCircle, size: 18),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.white.withValues(alpha: 0.03),
+        padding: const EdgeInsets.all(8),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      tooltip: 'Env Sync Manual',
+    );
+  }
+}
+
+void _showEnvHelpDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+        child: GlassCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.greenAccent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(LucideIcons.helpCircle, color: Colors.greenAccent, size: 20),
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'ENV SYNC MANUAL',
+                      style: TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(LucideIcons.x, size: 18),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHelpSection(
+                        '1. Source Selection',
+                        'Pick your .env or configuration file. The app will parse its keys and values automatically for preview.',
+                        LucideIcons.filePlus,
+                      ),
+                      _buildHelpSection(
+                        '2. Masking Values',
+                        'Use the "Hide Values" feature to mask sensitive information (like API keys or passwords). Perfect for creating shared templates.',
+                        LucideIcons.eyeOff,
+                      ),
+                      _buildHelpSection(
+                        '3. Output Controls',
+                        'Customize the output filename and choose a save directory. By default, it saves to the same folder as the source.',
+                        LucideIcons.folderOutput,
+                      ),
+                      _buildHelpSection(
+                        '4. Live Preview',
+                        'View and edit your configuration directly. The editor includes syntax highlighting and real-time validation.',
+                        LucideIcons.edit3,
+                      ),
+                      _buildHelpSection(
+                        '5. Generate File',
+                        'Click "Generate File" to export your changes. If the target file already exists, you can choose to replace it.',
+                        LucideIcons.download,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _buildHelpSection(String title, String description, IconData icon) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 24),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: Colors.greenAccent.withValues(alpha: 0.6)),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: TextStyle(
+                  fontFamily: 'Fredoka',
+                  fontSize: 13,
+                  color: Colors.white.withValues(alpha: 0.5),
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -75,6 +75,7 @@ class SyncState {
   final double syncSpeed; // Bytes per second
   final Duration? remainingTime;
   final int speedLimit; // MB/s, 0 = unlimited
+  final bool isSpeedLimitEnabled;
   final List<SyncItem> sidebarItems;
 
   SyncState({
@@ -113,6 +114,7 @@ class SyncState {
     this.syncSpeed = 0.0,
     this.remainingTime,
     this.speedLimit = 0,
+    this.isSpeedLimitEnabled = false,
     this.sidebarItems = const [],
   });
 
@@ -152,6 +154,7 @@ class SyncState {
     double? syncSpeed,
     Duration? remainingTime,
     int? speedLimit,
+    bool? isSpeedLimitEnabled,
     List<SyncItem>? sidebarItems,
   }) {
     return SyncState(
@@ -190,6 +193,7 @@ class SyncState {
       syncSpeed: syncSpeed ?? this.syncSpeed,
       remainingTime: remainingTime ?? this.remainingTime,
       speedLimit: speedLimit ?? this.speedLimit,
+      isSpeedLimitEnabled: isSpeedLimitEnabled ?? this.isSpeedLimitEnabled,
       sidebarItems: sidebarItems ?? this.sidebarItems,
     );
   }
@@ -246,6 +250,10 @@ class SyncNotifier extends Notifier<SyncState> {
 
   void setSpeedLimit(int limit) {
     state = state.copyWith(speedLimit: limit);
+  }
+
+  void toggleSpeedLimit(bool enabled) {
+    state = state.copyWith(isSpeedLimitEnabled: enabled);
   }
 
   void setSidebarSortOrder(SidebarSortOrder order) {
@@ -975,7 +983,7 @@ class SyncNotifier extends Notifier<SyncState> {
       itemsToSync,
       shouldAbort: () => state.isSyncStopped,
       shouldPause: () => state.isSyncPaused,
-      getSpeedLimit: () => state.speedLimit,
+      getSpeedLimit: () => state.isSpeedLimitEnabled ? state.speedLimit : 0,
       onProgress: (item, count, total, bytesCopied, totalB, itemBytesCopied) {
         if (item.type == SyncType.file && itemBytesCopied == 0) {
           filesDone++;

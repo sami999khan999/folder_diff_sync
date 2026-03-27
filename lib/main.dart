@@ -133,8 +133,6 @@ class SelectionScreen extends ConsumerWidget {
                     letterSpacing: 2,
                   ),
                 ),
-                const Spacer(),
-                _HelpButton(),
               ],
             ),
             const SizedBox(height: 12),
@@ -534,8 +532,24 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                                 ),
                               ),
                               const Spacer(),
+                              Transform.scale(
+                                scale: 0.7,
+                                child: Switch(
+                                  value: state.isSpeedLimitEnabled,
+                                  onChanged: (val) => notifier.toggleSpeedLimit(val),
+                                  activeColor: Colors.blueAccent,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
                               Text(
-                                state.speedLimit == 0 ? 'Unlimited' : '${state.speedLimit} MB/s',
+                                !state.isSpeedLimitEnabled 
+                                    ? 'Unlimited' 
+                                    : (state.speedLimit == 0 ? 'Unlimited' : '${state.speedLimit} MB/s'),
                                 style: TextStyle(
                                   fontFamily: 'Fredoka',
                                   fontSize: 11,
@@ -543,60 +557,71 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              const Spacer(),
                             ],
                           ),
                           const SizedBox(height: 12),
-                          TextField(
-                            controller: _speedController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            style: const TextStyle(
-                              fontFamily: 'Fredoka',
-                              fontSize: 13,
-                              color: Colors.white,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: '0 (Unlimited)',
-                              hintStyle: TextStyle(
+                          Opacity(
+                            opacity: state.isSpeedLimitEnabled ? 1.0 : 0.5,
+                            child: TextField(
+                              controller: _speedController,
+                              enabled: state.isSpeedLimitEnabled,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: const TextStyle(
                                 fontFamily: 'Fredoka',
-                                color: Colors.white.withValues(alpha: 0.2),
-                                fontSize: 12,
+                                fontSize: 13,
+                                color: Colors.white,
                               ),
-                              suffixText: 'MB/s',
-                              suffixStyle: TextStyle(
-                                fontFamily: 'Fredoka',
-                                color: Colors.blueAccent.withValues(alpha: 0.5),
-                                fontSize: 11,
-                              ),
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 14,
-                              ),
-                              filled: true,
-                              fillColor: Colors.black.withValues(alpha: 0.1),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.05),
+                              decoration: InputDecoration(
+                                hintText: 'Enter limit (MB/s)',
+                                hintStyle: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  fontSize: 12,
+                                ),
+                                suffixText: 'MB/s',
+                                suffixStyle: TextStyle(
+                                  fontFamily: 'Fredoka',
+                                  color: Colors.blueAccent.withValues(alpha: 0.5),
+                                  fontSize: 11,
+                                ),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 14,
+                                ),
+                                filled: true,
+                                fillColor: Colors.black.withValues(alpha: 0.1),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.05),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.blueAccent.withValues(alpha: 0.3),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                disabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.02),
+                                  ),
                                 ),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.blueAccent.withValues(alpha: 0.3),
-                                  width: 1.5,
-                                ),
-                              ),
+                              onChanged: (val) {
+                                final limit = int.tryParse(val) ?? 0;
+                                notifier.setSpeedLimit(limit);
+                              },
                             ),
-                            onChanged: (val) {
-                              final limit = int.tryParse(val) ?? 0;
-                              notifier.setSpeedLimit(limit);
-                            },
                           ),
                         ],
                       ),
@@ -1955,8 +1980,6 @@ class FileContentSyncScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const Spacer(),
-                _HelpButton(),
               ],
             ).animate().fadeIn(),
             const SizedBox(height: 48),
