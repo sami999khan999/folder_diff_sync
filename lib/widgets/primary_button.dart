@@ -20,7 +20,7 @@ class PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: onPressed != null
                 ? [
                     BoxShadow(
@@ -39,7 +39,7 @@ class PrimaryButton extends StatelessWidget {
               disabledBackgroundColor: Colors.white.withValues(alpha: 0.05),
               padding: const EdgeInsets.symmetric(vertical: 18),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),

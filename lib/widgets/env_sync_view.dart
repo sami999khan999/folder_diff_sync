@@ -31,6 +31,7 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: MultiSplitViewTheme(
           data: MultiSplitViewThemeData(
@@ -155,11 +156,16 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                   const SizedBox(height: 12),
                   if (state.sourceFilePath != null && !_showOutputDir)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.02),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,9 +185,13 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                           ),
                           const SizedBox(height: 8),
                           TextButton.icon(
-                            onPressed: () => setState(() => _showOutputDir = true),
+                            onPressed: () =>
+                                setState(() => _showOutputDir = true),
                             icon: const Icon(LucideIcons.folderEdit, size: 14),
-                            label: const Text('Change Directory', style: TextStyle(fontSize: 12)),
+                            label: const Text(
+                              'Change Directory',
+                              style: TextStyle(fontSize: 12),
+                            ),
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.blueAccent,
                               padding: EdgeInsets.zero,
@@ -216,9 +226,10 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                       color: Colors.purpleAccent,
                       onManualPath: (path) => notifier.setOutputDirectory(path),
                       onTap: () async {
-                        final result = await FilePicker.platform.getDirectoryPath(
-                          dialogTitle: 'Select output directory',
-                        );
+                        final result = await FilePicker.platform
+                            .getDirectoryPath(
+                              dialogTitle: 'Select output directory',
+                            );
                         if (result != null) notifier.setOutputDirectory(result);
                       },
                     ).animate().fadeIn(delay: 300.ms),
@@ -307,9 +318,11 @@ class _MiddleSectionState extends ConsumerState<_MiddleSection> {
 
     ref.listen(envSyncProvider, (previous, next) {
       final fileLoaded = previous?.lastLoadedAt != next.lastLoadedAt;
-      
+
       if (fileLoaded) {
-        final newText = next.entries.map((e) => e.toOutputLine(hideValues: false)).join('\n');
+        final newText = next.entries
+            .map((e) => e.toOutputLine(hideValues: false))
+            .join('\n');
         if (_textController.text != newText) {
           _textController.text = newText;
         }
@@ -317,7 +330,9 @@ class _MiddleSectionState extends ConsumerState<_MiddleSection> {
     });
 
     if (_textController.text.isEmpty && state.entries.isNotEmpty) {
-      _textController.text = state.entries.map((e) => e.toOutputLine(hideValues: false)).join('\n');
+      _textController.text = state.entries
+          .map((e) => e.toOutputLine(hideValues: false))
+          .join('\n');
     }
 
     return Container(
@@ -350,7 +365,7 @@ class _MiddleSectionState extends ConsumerState<_MiddleSection> {
                           color: state.hideValues
                               ? Colors.orangeAccent.withValues(alpha: 0.1)
                               : Colors.greenAccent.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           state.hideValues ? 'VALUES HIDDEN' : 'WITH VALUES',
@@ -412,11 +427,16 @@ class _MiddleSectionState extends ConsumerState<_MiddleSection> {
                       ),
                     ).animate().fadeIn()
                   : Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.02),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.05),
+                        ),
                       ),
                       child: TextField(
                         controller: _textController,
@@ -524,7 +544,7 @@ class _RightSidebarState extends ConsumerState<_RightSidebar> {
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: Colors.amber.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
                                 LucideIcons.fileEdit,
@@ -612,24 +632,35 @@ class _RightSidebarState extends ConsumerState<_RightSidebar> {
                     decoration: BoxDecoration(
                       color: Colors.orangeAccent.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: Colors.orangeAccent.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: SwitchListTile(
                       title: const Text(
                         'File Exists! Replace?',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.orangeAccent),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orangeAccent,
+                        ),
                       ),
                       value: state.replaceFile,
                       onChanged: (val) => notifier.toggleReplaceFile(val),
                       activeThumbColor: Colors.orangeAccent,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                      ),
                       dense: true,
                     ),
                   ).animate().fadeIn().slideY(begin: -0.1),
                 SizedBox(
                   width: double.infinity,
                   child: PrimaryButton(
-                    onPressed: state.isProcessing || state.entries.isEmpty || (state.outputExists && !state.replaceFile)
+                    onPressed:
+                        state.isProcessing ||
+                            state.entries.isEmpty ||
+                            (state.outputExists && !state.replaceFile)
                         ? null
                         : () => notifier.generateFile(),
                     icon: state.isProcessing
@@ -651,7 +682,7 @@ class _RightSidebarState extends ConsumerState<_RightSidebar> {
                     ),
                     decoration: BoxDecoration(
                       color: Colors.greenAccent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: Colors.greenAccent.withValues(alpha: 0.3),
                       ),
@@ -694,7 +725,7 @@ class _RightSidebarState extends ConsumerState<_RightSidebar> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: child,
@@ -722,20 +753,28 @@ class _EnvSyntaxController extends TextEditingController {
   }) {
     final List<TextSpan> children = [];
     final lines = text.split('\n');
-    
+
     for (int i = 0; i < lines.length; i++) {
       final line = lines[i];
       final trimmed = line.trim();
-      
+
       if (trimmed.startsWith('#')) {
         // Comment
-        children.add(TextSpan(text: line, style: style?.copyWith(color: Colors.grey.withValues(alpha: 0.5), fontStyle: FontStyle.italic)));
+        children.add(
+          TextSpan(
+            text: line,
+            style: style?.copyWith(
+              color: Colors.grey.withValues(alpha: 0.5),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        );
       } else if (trimmed.contains('=')) {
         // Key/Value Pair
         final eqIndex = line.indexOf('=');
         final keyPart = line.substring(0, eqIndex + 1); // includes '='
         final valuePart = line.substring(eqIndex + 1);
-        
+
         String displayValue = valuePart;
         if (hideValues) {
           // Replace each character with a dot, but keep the \r if present
@@ -746,17 +785,28 @@ class _EnvSyntaxController extends TextEditingController {
           }
         }
 
-        children.add(TextSpan(
-          children: [
-             TextSpan(text: keyPart, style: style?.copyWith(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
-             TextSpan(text: displayValue, style: style?.copyWith(color: Colors.greenAccent)),
-          ]
-        ));
+        children.add(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: keyPart,
+                style: style?.copyWith(
+                  color: Colors.blueAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextSpan(
+                text: displayValue,
+                style: style?.copyWith(color: Colors.greenAccent),
+              ),
+            ],
+          ),
+        );
       } else {
         // Plain text / empty space
         children.add(TextSpan(text: line, style: style));
       }
-      
+
       if (i < lines.length - 1) {
         children.add(TextSpan(text: '\n', style: style));
       }
@@ -771,14 +821,17 @@ class _HideValuesFormatter extends TextInputFormatter {
   _HideValuesFormatter({required this.hideValues});
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     if (!hideValues) return newValue;
 
     // Detect what changed by finding the first difference
     int firstDiff = 0;
     while (firstDiff < oldValue.text.length &&
-           firstDiff < newValue.text.length &&
-           oldValue.text[firstDiff] == newValue.text[firstDiff]) {
+        firstDiff < newValue.text.length &&
+        oldValue.text[firstDiff] == newValue.text[firstDiff]) {
       firstDiff++;
     }
 
@@ -787,7 +840,7 @@ class _HideValuesFormatter extends TextInputFormatter {
     final lastNewLine = prefix.lastIndexOf('\n');
     final startOfLine = lastNewLine == -1 ? 0 : lastNewLine + 1;
     final currentLinePrefix = prefix.substring(startOfLine);
-    
+
     if (currentLinePrefix.contains('=')) {
       // If the change is after the first '=', block it
       return oldValue;
@@ -834,9 +887,13 @@ void _showEnvHelpDialog(BuildContext context) {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.greenAccent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(LucideIcons.helpCircle, color: Colors.greenAccent, size: 20),
+                      child: const Icon(
+                        LucideIcons.helpCircle,
+                        color: Colors.greenAccent,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     const Text(

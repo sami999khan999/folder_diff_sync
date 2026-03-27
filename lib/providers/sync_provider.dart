@@ -68,6 +68,8 @@ class SyncState {
   final bool isSyncStopped;
   final bool isBackgroundScanComplete;
   final int diffCount;
+  final int diffFoldersCount;
+  final int selectedFoldersCount;
   final String sidebarSearchQuery;
   final SidebarSortOrder sidebarSortOrder;
   final int syncingFileBytes;
@@ -107,6 +109,8 @@ class SyncState {
     this.isSyncStopped = false,
     this.isBackgroundScanComplete = false,
     this.diffCount = 0,
+    this.diffFoldersCount = 0,
+    this.selectedFoldersCount = 0,
     this.sidebarSearchQuery = '',
     this.sidebarSortOrder = SidebarSortOrder.name,
     this.syncingFileBytes = 0,
@@ -147,9 +151,11 @@ class SyncState {
     bool? isSyncStopped,
     bool? isBackgroundScanComplete,
     int? diffCount,
+    int? diffFoldersCount,
+    int? selectedFoldersCount,
     String? sidebarSearchQuery,
     SidebarSortOrder? sidebarSortOrder,
-     int? syncingFileBytes,
+    int? syncingFileBytes,
     int? syncingFileTotalBytes,
     double? syncSpeed,
     Duration? remainingTime,
@@ -186,6 +192,8 @@ class SyncState {
       isSyncStopped: isSyncStopped ?? this.isSyncStopped,
       isBackgroundScanComplete: isBackgroundScanComplete ?? this.isBackgroundScanComplete,
       diffCount: diffCount ?? this.diffCount,
+      diffFoldersCount: diffFoldersCount ?? this.diffFoldersCount,
+      selectedFoldersCount: selectedFoldersCount ?? this.selectedFoldersCount,
       sidebarSearchQuery: sidebarSearchQuery ?? this.sidebarSearchQuery,
       sidebarSortOrder: sidebarSortOrder ?? this.sidebarSortOrder,
       syncingFileBytes: syncingFileBytes ?? this.syncingFileBytes,
@@ -199,13 +207,17 @@ class SyncState {
   }
 
   SyncState updateWithCounts(List<SyncItem> allItems) {
-    final diffItems = allItems.where((e) => e.type == SyncType.file && _isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
-    final selectedItems = allItems.where((e) => e.isSelected && e.type == SyncType.file).toList();
+    final diffFiles = allItems.where((e) => e.type == SyncType.file && _isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
+    final diffFolders = allItems.where((e) => e.type == SyncType.directory && _isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
+    final selectedFiles = allItems.where((e) => e.isSelected && e.type == SyncType.file).toList();
+    final selectedFolders = allItems.where((e) => e.isSelected && e.type == SyncType.directory).toList();
     
     return copyWith(
-      diffCount: diffItems.length,
-      selectedCount: selectedItems.length,
-      totalSelectedSize: selectedItems.fold<int>(0, (sum, item) => sum + item.fileSize),
+      diffCount: diffFiles.length,
+      diffFoldersCount: diffFolders.length,
+      selectedCount: selectedFiles.length,
+      selectedFoldersCount: selectedFolders.length,
+      totalSelectedSize: selectedFiles.fold<int>(0, (sum, item) => sum + item.fileSize),
     );
   }
 
@@ -289,6 +301,7 @@ class SyncNotifier extends Notifier<SyncState> {
     state = state.copyWith(
       sidebarItems: filtered,
       selectedCount: _allItems.where((e) => e.isSelected && e.type == SyncType.file).length,
+      selectedFoldersCount: _allItems.where((e) => e.isSelected && e.type == SyncType.directory).length,
       totalSelectedSize: _allItems.where((e) => e.isSelected && e.type == SyncType.file).fold<int>(0, (sum, item) => sum + item.fileSize),
       itemsRevision: state.itemsRevision + 1,
     );
@@ -316,6 +329,7 @@ class SyncNotifier extends Notifier<SyncState> {
 
       state = state.copyWith(
         selectedCount: _allItems.where((e) => e.isSelected && e.type == SyncType.file).length,
+        selectedFoldersCount: _allItems.where((e) => e.isSelected && e.type == SyncType.directory).length,
         totalSelectedSize: _allItems.where((e) => e.isSelected && e.type == SyncType.file).fold<int>(0, (sum, item) => sum + (item.fileSize)),
         itemsRevision: state.itemsRevision + 1,
       );
@@ -845,6 +859,7 @@ class SyncNotifier extends Notifier<SyncState> {
 
       state = state.copyWith(
         selectedCount: _allItems.where((e) => e.isSelected && e.type == SyncType.file).length,
+        selectedFoldersCount: _allItems.where((e) => e.isSelected && e.type == SyncType.directory).length,
         totalSelectedSize: _allItems.where((e) => e.isSelected && e.type == SyncType.file).fold<int>(0, (sum, item) => sum + item.fileSize),
         itemsRevision: state.itemsRevision + 1,
       );
@@ -913,6 +928,7 @@ class SyncNotifier extends Notifier<SyncState> {
 
     state = state.copyWith(
       selectedCount: newSelectedCount,
+      selectedFoldersCount: _allItems.where((e) => e.isSelected && e.type == SyncType.directory).length,
       totalSelectedSize: newTotalSize,
       itemsRevision: state.itemsRevision + 1,
     );
@@ -947,12 +963,14 @@ class SyncNotifier extends Notifier<SyncState> {
   Future<void> sync() async {
     if (_allItems.isEmpty) return;
 
-    final itemsToSync = _allItems.where((e) => e.isSelected && e.type == SyncType.file).toList();
+    final itemsToSync = _allItems.where((e) => e.isSelected).toList();
     if (itemsToSync.isEmpty) return;
 
     int totalBytes = 0;
     for (final item in itemsToSync) {
-      totalBytes += item.fileSize;
+      if (item.type == SyncType.file) {
+        totalBytes += item.fileSize;
+      }
     }
 
     final filesToSyncCount = itemsToSync.where((e) => e.type == SyncType.file).length;
@@ -976,6 +994,8 @@ class SyncNotifier extends Notifier<SyncState> {
 
     DateTime lastUpdate = DateTime.now();
 
+    final Set<String> processedFiles = {};
+    final Set<String> processedFolders = {};
     int filesDone = 0;
     int foldersDone = 0;
 
@@ -985,10 +1005,16 @@ class SyncNotifier extends Notifier<SyncState> {
       shouldPause: () => state.isSyncPaused,
       getSpeedLimit: () => state.isSpeedLimitEnabled ? state.speedLimit : 0,
       onProgress: (item, count, total, bytesCopied, totalB, itemBytesCopied) {
-        if (item.type == SyncType.file && itemBytesCopied == 0) {
-          filesDone++;
+        if (item.type == SyncType.file) {
+          if (!processedFiles.contains(item.relativePath)) {
+            processedFiles.add(item.relativePath);
+            filesDone++;
+          }
         } else if (item.type == SyncType.directory) {
-          foldersDone++;
+          if (!processedFolders.contains(item.relativePath)) {
+            processedFolders.add(item.relativePath);
+            foldersDone++;
+          }
         }
 
         final now = DateTime.now();

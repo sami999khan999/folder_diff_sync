@@ -41,6 +41,8 @@ dependencies:
   flutter_animate: ^4.5.2
   multi_split_view: ^3.6.1
   ffi: ^2.1.2
+  system_tray: ^2.0.3
+  window_manager: ^0.4.3
 
 dev_dependencies:
   flutter_test:

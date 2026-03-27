@@ -21,7 +21,7 @@ class DiffList extends ConsumerWidget {
     }
 
     if (items.isEmpty && !state.isComparing) {
-      return _buildPlaceholder('Folders are in sync! No missing files found.', LucideIcons.checkCircle);
+      return _buildPlaceholder('Folders are in sync! No missing items found.', LucideIcons.checkCircle);
     }
 
     return Column(
@@ -41,7 +41,7 @@ class DiffList extends ConsumerWidget {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '${items.length} items to reconcile',
+                        '${state.diffCount} files to reconcile',
                         style: TextStyle(fontSize: 12, color: Colors.grey.withValues(alpha: 0.6)),
                       ),
                     ],
@@ -86,7 +86,7 @@ class DiffList extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(12),
                   child: LinearProgressIndicator(
                     minHeight: 2,
                     backgroundColor: Colors.white.withValues(alpha: 0.05),
@@ -153,7 +153,7 @@ class _ActionButton extends StatelessWidget {
       style: TextButton.styleFrom(
         foregroundColor: Colors.grey,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         backgroundColor: Colors.white.withValues(alpha: 0.03),
       ),
       icon: Icon(icon, size: 14),
@@ -204,7 +204,7 @@ class _DiffItemTileState extends State<_DiffItemTile> {
           color: _isHovered 
               ? statusColor.withValues(alpha: 0.08) 
               : Colors.white.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: widget.item.isSelected
                 ? statusColor.withValues(alpha: 0.3)
@@ -214,7 +214,7 @@ class _DiffItemTileState extends State<_DiffItemTile> {
         ),
         child: InkWell(
           onTap: () => widget.onChanged(!widget.item.isSelected),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           hoverColor: Colors.transparent,
           splashColor: statusColor.withValues(alpha: 0.1),
           highlightColor: Colors.transparent,
@@ -261,7 +261,7 @@ class _DiffItemTileState extends State<_DiffItemTile> {
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -277,13 +277,16 @@ class _DiffItemTileState extends State<_DiffItemTile> {
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: Checkbox(
-                        value: widget.item.isSelected,
-                        onChanged: widget.onChanged,
-                        activeColor: statusColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      height: 18,
+                      width: 18,
+                      child: Transform.scale(
+                        scale: 0.8,
+                        child: Checkbox(
+                          value: widget.item.isSelected,
+                          onChanged: widget.onChanged,
+                          activeColor: statusColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
                     ),
                   ],

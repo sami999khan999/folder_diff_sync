@@ -57,7 +57,7 @@ class FolderSelectorRow extends ConsumerWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.blueAccent.withValues(alpha: 0.3),
-                      Colors.transparent
+                      Colors.transparent,
                     ],
                   ),
                 ),
@@ -77,8 +77,11 @@ class FolderSelectorRow extends ConsumerWidget {
                     ),
                   ],
                 ),
-                child: const Icon(LucideIcons.chevronDown,
-                    color: Colors.blueAccent, size: 14),
+                child: const Icon(
+                  LucideIcons.chevronDown,
+                  color: Colors.blueAccent,
+                  size: 14,
+                ),
               ),
               Container(
                 width: 1,
@@ -89,7 +92,7 @@ class FolderSelectorRow extends ConsumerWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.purpleAccent.withValues(alpha: 0.3)
+                      Colors.purpleAccent.withValues(alpha: 0.3),
                     ],
                   ),
                 ),
@@ -173,7 +176,9 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: widget.color.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: widget.color.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Icon(widget.icon, size: 18, color: widget.color),
                 ),
@@ -194,7 +199,9 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _controller.text.isEmpty ? 'Not Selected' : p.basename(_controller.text),
+                        _controller.text.isEmpty
+                            ? 'Not Selected'
+                            : p.basename(_controller.text),
                         style: const TextStyle(
                           fontFamily: 'Fredoka',
                           fontWeight: FontWeight.w600,
@@ -227,12 +234,22 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                     },
                     child: TextField(
                       controller: _controller,
-                      style: const TextStyle(fontFamily: 'Fredoka', fontSize: 13, color: Colors.white),
+                      style: const TextStyle(
+                        fontFamily: 'Fredoka',
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
                       decoration: InputDecoration(
                         hintText: widget.hintText,
-                        hintStyle: TextStyle(fontFamily: 'Fredoka', color: Colors.white.withValues(alpha: 0.3)),
+                        hintStyle: TextStyle(
+                          fontFamily: 'Fredoka',
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
                         filled: true,
                         fillColor: Colors.black.withValues(alpha: 0.1),
                         border: OutlineInputBorder(
@@ -241,11 +258,16 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.05),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: widget.color.withValues(alpha: 0.3), width: 1.5),
+                          borderSide: BorderSide(
+                            color: widget.color.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
                         ),
                       ),
                       onSubmitted: (val) {
@@ -267,7 +289,9 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                       decoration: BoxDecoration(
                         color: widget.color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: widget.color.withValues(alpha: 0.15)),
+                        border: Border.all(
+                          color: widget.color.withValues(alpha: 0.15),
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: widget.color.withValues(alpha: 0.05),
@@ -276,7 +300,11 @@ class _PathSelectorCardState extends State<PathSelectorCard> {
                           ),
                         ],
                       ),
-                      child: Icon(LucideIcons.folderSearch, size: 20, color: widget.color),
+                      child: Icon(
+                        LucideIcons.folderSearch,
+                        size: 20,
+                        color: widget.color,
+                      ),
                     ),
                   ),
                 ),

@@ -257,7 +257,7 @@ class _CustomCheckbox extends StatelessWidget {
           color: value 
               ? (disabled ? Colors.blueAccent.withValues(alpha: 0.2) : Colors.blueAccent) 
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: value 
                 ? (disabled ? Colors.blueAccent.withValues(alpha: 0.2) : Colors.blueAccent) 
@@ -294,7 +294,7 @@ Widget _buildOwnershipIndicator(String label, Color color) {
     alignment: Alignment.center,
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(3),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
     ),
     child: Text(
@@ -346,7 +346,7 @@ Widget _buildStatusBadge(FileStatus status) {
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.06),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(12),
       border: Border.all(color: color.withValues(alpha: 0.15)),
     ),
     child: Text(

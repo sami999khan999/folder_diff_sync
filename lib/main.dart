@@ -3,17 +3,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:window_manager/window_manager.dart';
 import 'models/sync_item.dart';
 import 'providers/sync_provider.dart';
+import 'utils/item_counter.dart';
 import 'widgets/folder_selector.dart';
 import 'widgets/glass_card.dart';
 import 'widgets/env_sync_view.dart';
 import 'widgets/sync_tree_view.dart';
+import 'services/tray_service.dart';
 
 import 'package:multi_split_view/multi_split_view.dart';
 
-void main() {
-  runApp(const ProviderScope(child: MyApp()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  final container = ProviderContainer();
+  final trayService = TrayService(container);
+  await trayService.init();
+
+  runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -37,7 +47,7 @@ class MyApp extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.05),
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
           ),
         ),
@@ -204,7 +214,7 @@ class ModeCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: InkWell(
         onTap: isComingSoon ? null : onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
@@ -224,7 +234,7 @@ class ModeCard extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 32),
               ),
@@ -248,7 +258,7 @@ class ModeCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
                         'SOON',
@@ -282,6 +292,7 @@ class FolderSyncView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: MultiSplitViewTheme(
           data: MultiSplitViewThemeData(
@@ -326,7 +337,7 @@ Widget _buildSectionHeader(String title) {
         height: 12,
         decoration: BoxDecoration(
           color: Colors.blueAccent,
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
       const SizedBox(width: 8),
@@ -378,7 +389,15 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
         border: Border(
           right: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
-        color: const Color(0xFF0F0F0F),
+        color: const Color(0xFF0F0F0F).withValues(alpha: 0.9),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF14142B).withValues(alpha: 0.9),
+            const Color(0xFF0F0F0F).withValues(alpha: 1.0),
+          ],
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: SingleChildScrollView(
@@ -414,12 +433,14 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                 final isTwoWay = state.isTwoWaySync;
                 final isSyncing = state.isSyncing;
                 final selectedCount = state.selectedCount;
-                final isVisible = (state.sourcePath != null &&
+                final isVisible =
+                    (state.sourcePath != null &&
                         state.sourcePath!.isNotEmpty &&
                         state.targetPath != null &&
                         state.targetPath!.isNotEmpty) ||
                     isSyncing;
 
+                final selectedFoldersCount = state.selectedFoldersCount;
                 if (!isVisible) return const SizedBox.shrink();
 
                 return Column(
@@ -433,7 +454,7 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.05),
                         ),
@@ -443,14 +464,19 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: (isTwoWay ? Colors.purpleAccent : Colors.grey)
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
+                              color:
+                                  (isTwoWay ? Colors.purpleAccent : Colors.grey)
+                                      .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              isTwoWay ? LucideIcons.repeat : LucideIcons.arrowRight,
+                              isTwoWay
+                                  ? LucideIcons.repeat
+                                  : LucideIcons.arrowRight,
                               size: 16,
-                              color: isTwoWay ? Colors.purpleAccent : Colors.grey,
+                              color: isTwoWay
+                                  ? Colors.purpleAccent
+                                  : Colors.grey,
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -505,7 +531,7 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.03),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.05),
                         ),
@@ -536,9 +562,11 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                                 scale: 0.7,
                                 child: Switch(
                                   value: state.isSpeedLimitEnabled,
-                                  onChanged: (val) => notifier.toggleSpeedLimit(val),
+                                  onChanged: (val) =>
+                                      notifier.toggleSpeedLimit(val),
                                   activeColor: Colors.blueAccent,
-                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
                             ],
@@ -547,13 +575,17 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                           Row(
                             children: [
                               Text(
-                                !state.isSpeedLimitEnabled 
-                                    ? 'Unlimited' 
-                                    : (state.speedLimit == 0 ? 'Unlimited' : '${state.speedLimit} MB/s'),
+                                !state.isSpeedLimitEnabled
+                                    ? 'Unlimited'
+                                    : (state.speedLimit == 0
+                                          ? 'Unlimited'
+                                          : '${state.speedLimit} MB/s'),
                                 style: TextStyle(
                                   fontFamily: 'Fredoka',
                                   fontSize: 11,
-                                  color: Colors.blueAccent.withValues(alpha: 0.8),
+                                  color: Colors.blueAccent.withValues(
+                                    alpha: 0.8,
+                                  ),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -567,7 +599,9 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                               controller: _speedController,
                               enabled: state.isSpeedLimitEnabled,
                               keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
                               style: const TextStyle(
                                 fontFamily: 'Fredoka',
                                 fontSize: 13,
@@ -583,7 +617,9 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                                 suffixText: 'MB/s',
                                 suffixStyle: TextStyle(
                                   fontFamily: 'Fredoka',
-                                  color: Colors.blueAccent.withValues(alpha: 0.5),
+                                  color: Colors.blueAccent.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   fontSize: 11,
                                 ),
                                 isDense: true,
@@ -606,7 +642,9 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: Colors.blueAccent.withValues(alpha: 0.3),
+                                    color: Colors.blueAccent.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     width: 1.5,
                                   ),
                                 ),
@@ -642,7 +680,7 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                           ),
                           minimumSize: const Size(double.infinity, 52),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: isSyncing ? 0 : 8,
                           shadowColor: Colors.blueAccent.withValues(alpha: 0.5),
@@ -665,7 +703,9 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
                               const Icon(LucideIcons.refreshCw, size: 18),
                             const SizedBox(width: 10),
                             Text(
-                              isSyncing ? 'Syncing...' : 'Sync $selectedCount Items',
+                              isSyncing
+                                  ? 'Syncing...'
+                                  : 'Sync ${ItemCounter.fromValues(selectedCount, selectedFoldersCount).summary}',
                               style: const TextStyle(
                                 fontFamily: 'Fredoka',
                                 fontSize: 14,
@@ -686,7 +726,6 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
     );
   }
 
-
   Widget _buildLogo() {
     return Row(
       children: [
@@ -694,7 +733,7 @@ class _LeftSidebarState extends ConsumerState<_LeftSidebar> {
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Image.asset('assets/logo.png', width: 22, height: 22),
         ),
@@ -787,9 +826,10 @@ class _MiddleSection extends ConsumerWidget {
                         state.isBackgroundScanning
                             ? 'Checking for differences...'
                             : (state.isBackgroundScanComplete
-                                  ? (state.diffCount == 0
+                                  ? (state.diffCount == 0 &&
+                                            state.diffFoldersCount == 0
                                         ? 'No differences found. Folders are in sync.'
-                                        : 'Scan complete. Found ${state.diffCount} differences.')
+                                        : 'Scan complete. Found ${ItemCounter.fromValues(state.diffCount, state.diffFoldersCount).summary}.')
                                   : 'Select items to include in sync'),
                         style: TextStyle(
                           fontFamily: 'Fredoka',
@@ -850,7 +890,7 @@ class _MiddleSection extends ConsumerWidget {
             ? Colors.grey.withValues(alpha: 0.3)
             : Colors.grey,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       icon: Icon(icon, size: 14),
       label: Text(
@@ -898,6 +938,12 @@ class _RightSidebar extends ConsumerWidget {
     final syncedFilesCount = ref.watch(
       syncProvider.select((s) => s.syncedFilesCount),
     );
+    final syncedFoldersCount = ref.watch(
+      syncProvider.select((s) => s.syncedFoldersCount),
+    );
+    final selectedFoldersCount = ref.watch(
+      syncProvider.select((s) => s.selectedFoldersCount),
+    );
     final syncTotalBytes = ref.watch(
       syncProvider.select((s) => s.syncTotalBytes),
     );
@@ -911,6 +957,14 @@ class _RightSidebar extends ConsumerWidget {
           left: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
         color: Colors.black.withValues(alpha: 0.2),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.2),
+            Colors.black.withValues(alpha: 0.4),
+          ],
+        ),
       ),
       child: Column(
         children: [
@@ -1075,8 +1129,14 @@ class _RightSidebar extends ConsumerWidget {
                     const SizedBox(width: 6),
                     Text(
                       syncProgress >= 1.0 && selectedCount == 0 && !isSyncing
-                          ? '$syncedFilesCount files synced'
-                          : '$selectedCount files',
+                          ? ItemCounter.fromValues(
+                              syncedFilesCount,
+                              syncedFoldersCount,
+                            ).syncedSummary
+                          : ItemCounter.fromValues(
+                              selectedCount,
+                              selectedFoldersCount,
+                            ).summary,
                       style: TextStyle(
                         fontFamily: 'Fredoka',
                         fontSize: 12,
@@ -1201,12 +1261,12 @@ class _RightSidebar extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: InkWell(
         onTap: () => ref.read(syncProvider.notifier).loadMoreSidebarItems(),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: Colors.blueAccent.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.1)),
           ),
           child: Center(
@@ -1369,7 +1429,7 @@ Widget _buildSyncDashboard(SyncState state, SyncNotifier notifier) {
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             ),
             child: Column(
@@ -1406,8 +1466,8 @@ Widget _buildSyncDashboard(SyncState state, SyncNotifier notifier) {
                     Expanded(
                       child: _buildMetricWidget(
                         'FILES',
-                        '${state.syncedCount} / ${state.syncTotalCount}',
-                        LucideIcons.fileCheck,
+                        '${state.syncedFilesCount} / ${state.totalFilesToSync}',
+                        LucideIcons.checkSquare,
                         Colors.greenAccent,
                       ),
                     ),
@@ -1477,7 +1537,7 @@ Widget _buildSyncDashboard(SyncState state, SyncNotifier notifier) {
                 child: Column(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(12),
                       child: LinearProgressIndicator(
                         value:
                             state.syncingFileBytes /
@@ -1541,7 +1601,7 @@ Widget _buildSyncReport(SyncState state, SyncNotifier notifier) {
           height: 40,
           decoration: BoxDecoration(
             color: Colors.greenAccent.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(
             Icons.check_circle_rounded,
@@ -1566,7 +1626,7 @@ Widget _buildSyncReport(SyncState state, SyncNotifier notifier) {
               ),
               const SizedBox(height: 2),
               Text(
-                '${state.syncedFilesCount} files synced successfully (${_formatBytes(state.syncedBytes)})',
+                '${ItemCounter.fromValues(state.syncedFilesCount, state.syncedFoldersCount).syncedSummary} successfully (${_formatBytes(state.syncedBytes)})',
                 style: TextStyle(
                   fontFamily: 'Fredoka',
                   fontSize: 11,
@@ -1586,7 +1646,7 @@ Widget _buildSyncReport(SyncState state, SyncNotifier notifier) {
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
           ),
@@ -1700,12 +1760,12 @@ class _IconButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
@@ -1770,7 +1830,7 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
               decoration: BoxDecoration(
                 color: (_isHovered ? Colors.blueAccent : Colors.white)
                     .withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 widget.item.type == SyncType.directory
@@ -1821,37 +1881,40 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
             _StatusIcon(status: widget.item.status),
             const SizedBox(width: 12),
             SizedBox(
-              width: 24,
-              height: 24,
-              child: Checkbox(
-                value: widget.item.isSelected,
-                activeColor:
-                    (isSyncing || widget.item.status == FileStatus.identical)
-                    ? Colors.blueAccent.withValues(alpha: 0.3)
-                    : Colors.blueAccent,
-                checkColor: Colors.white,
-                side: BorderSide(
-                  color: Colors.white.withValues(
-                    alpha:
-                        (isSyncing ||
-                            widget.item.status == FileStatus.identical)
-                        ? 0.05
-                        : 0.2,
+              width: 18,
+              height: 18,
+              child: Transform.scale(
+                scale: 0.8,
+                child: Checkbox(
+                  value: widget.item.isSelected,
+                  activeColor:
+                      (isSyncing || widget.item.status == FileStatus.identical)
+                      ? Colors.blueAccent.withValues(alpha: 0.3)
+                      : Colors.blueAccent,
+                  checkColor: Colors.white,
+                  side: BorderSide(
+                    color: Colors.white.withValues(
+                      alpha:
+                          (isSyncing ||
+                              widget.item.status == FileStatus.identical)
+                          ? 0.05
+                          : 0.2,
+                    ),
+                    width: 1.5,
                   ),
-                  width: 1.5,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onChanged:
+                      (isSyncing || widget.item.status == FileStatus.identical)
+                      ? null
+                      : (val) => ref
+                            .read(syncProvider.notifier)
+                            .toggleItemSelectionByPath(
+                              widget.item.relativePath,
+                              val ?? false,
+                            ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                onChanged:
-                    (isSyncing || widget.item.status == FileStatus.identical)
-                    ? null
-                    : (val) => ref
-                          .read(syncProvider.notifier)
-                          .toggleItemSelectionByPath(
-                            widget.item.relativePath,
-                            val ?? false,
-                          ),
               ),
             ),
           ],
@@ -1887,7 +1950,7 @@ class _SyncItemTileState extends ConsumerState<_SyncItemTile> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
       ),
       child: Text(
@@ -2024,9 +2087,13 @@ void _showHelpDialog(BuildContext context) {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.blueAccent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(LucideIcons.helpCircle, color: Colors.blueAccent, size: 20),
+                      child: const Icon(
+                        LucideIcons.helpCircle,
+                        color: Colors.blueAccent,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     const Text(
