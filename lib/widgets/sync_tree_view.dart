@@ -70,6 +70,12 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
     Color hoverTint = Colors.blueAccent;
     if (isTargetOnly) hoverTint = Colors.purpleAccent;
 
+    final isSyncable = widget.node.item == null 
+        ? widget.node.needsSync 
+        : notifier.isItemSyncable(widget.node.item!);
+    
+    final effectiveDisabled = widget.disabled || !isSyncable;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -79,89 +85,92 @@ class _TreeNodeWidgetState extends ConsumerState<_TreeNodeWidget> {
           child: InkWell(
             onTap: widget.node.isDirectory
                 ? () => notifier.expandAndLoadNode(widget.node)
-                : (widget.disabled ? null : () => notifier.toggleNodeSelection(widget.node, !widget.node.isSelected)),
+                : (effectiveDisabled ? null : () => notifier.toggleNodeSelection(widget.node, !widget.node.isSelected)),
             hoverColor: Colors.transparent,
             splashColor: hoverTint.withValues(alpha: 0.1),
             highlightColor: Colors.transparent,
-            child: Container(
-              decoration: BoxDecoration(
-                color: _isHovered
-                    ? hoverTint.withValues(alpha: 0.05)
-                    : (widget.node.needsSync ? hoverTint.withValues(alpha: 0.02) : Colors.transparent),
-                border: Border(
-                  left: widget.node.needsSync && widget.node.isSelected
-                      ? BorderSide(color: statusColor, width: 3)
-                      : const BorderSide(color: Colors.transparent, width: 3),
+            child: Opacity(
+              opacity: effectiveDisabled && !widget.node.isDirectory ? 0.5 : 1.0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _isHovered
+                      ? hoverTint.withValues(alpha: 0.05)
+                      : (widget.node.needsSync ? hoverTint.withValues(alpha: 0.02) : Colors.transparent),
+                  border: Border(
+                    left: widget.node.needsSync && widget.node.isSelected
+                        ? BorderSide(color: statusColor, width: 3)
+                        : const BorderSide(color: Colors.transparent, width: 3),
+                  ),
                 ),
-              ),
-              padding: EdgeInsets.only(
-                left: 12.0 + (widget.node.depth * 28.0),
-                right: 20.0,
-                top: 10.0,
-                bottom: 10.0,
-              ),
-              child: Stack(
-                children: [
-                  // Indentation Guide Line
-                  if (widget.node.depth > 0)
-                    Positioned(
-                      left: -14,
-                      top: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 1,
-                        color: Colors.white.withValues(alpha: 0.05),
-                      ),
-                    ),
-                  Row(
-                    children: [
-                      if (widget.node.isDirectory)
-                        Icon(
-                          widget.node.isExpanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
-                          size: 14,
-                          color: (widget.node.needsSync ? statusColor : Colors.grey).withValues(alpha: 0.6),
-                        )
-                      else
-                        const SizedBox(width: 14),
-                      const SizedBox(width: 10),
-                      _CustomCheckbox(
-                        value: widget.node.isSelected,
-                        disabled: widget.disabled,
-                        onChanged: (val) => notifier.toggleNodeSelection(widget.node, val),
-                      ),
-                      const SizedBox(width: 16),
-                      Icon(
-                        widget.node.isDirectory ? LucideIcons.folder : LucideIcons.file,
-                        size: 18,
-                        color: statusColor,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                widget.node.name,
-                                style: TextStyle(
-                                  fontFamily: 'Fredoka',
-                                  fontSize: 14,
-                                  fontWeight: widget.node.needsSync ? FontWeight.w600 : FontWeight.normal,
-                                  color: widget.node.needsSync ? Colors.white : Colors.white.withValues(alpha: 0.4),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (widget.node.item != null) ...[
-                              const SizedBox(width: 10),
-                              _buildOwnershipLine(widget.node.item!.status),
-                            ],
-                          ],
+                padding: EdgeInsets.only(
+                  left: 12.0 + (widget.node.depth * 28.0),
+                  right: 20.0,
+                  top: 10.0,
+                  bottom: 10.0,
+                ),
+                child: Stack(
+                  children: [
+                    // Indentation Guide Line
+                    if (widget.node.depth > 0)
+                      Positioned(
+                        left: -14,
+                        top: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 1,
+                          color: Colors.white.withValues(alpha: 0.05),
                         ),
                       ),
-                      if (widget.node.item != null) _buildStatusBadge(widget.node.item!.status),
-                    ],
-                  ),
-                ],
+                    Row(
+                      children: [
+                        if (widget.node.isDirectory)
+                          Icon(
+                            widget.node.isExpanded ? LucideIcons.chevronDown : LucideIcons.chevronRight,
+                            size: 14,
+                            color: (widget.node.needsSync ? statusColor : Colors.grey).withValues(alpha: 0.6),
+                          )
+                        else
+                          const SizedBox(width: 14),
+                        const SizedBox(width: 10),
+                        _CustomCheckbox(
+                          value: widget.node.isSelected,
+                          disabled: effectiveDisabled,
+                          onChanged: (val) => notifier.toggleNodeSelection(widget.node, val),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(
+                          widget.node.isDirectory ? LucideIcons.folder : LucideIcons.file,
+                          size: 18,
+                          color: statusColor,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  widget.node.name,
+                                  style: TextStyle(
+                                    fontFamily: 'Fredoka',
+                                    fontSize: 14,
+                                    fontWeight: widget.node.needsSync ? FontWeight.w600 : FontWeight.normal,
+                                    color: widget.node.needsSync ? Colors.white : Colors.white.withValues(alpha: 0.4),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (widget.node.item != null) ...[
+                                const SizedBox(width: 10),
+                                _buildOwnershipLine(widget.node.item!.status),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (widget.node.item != null) _buildStatusBadge(widget.node.item!.status),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

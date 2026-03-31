@@ -14,7 +14,7 @@ class DiffList extends ConsumerWidget {
     final notifier = ref.read(syncProvider.notifier);
     // Watch itemsRevision to rebuild when items change
     ref.watch(syncProvider.select((s) => s.itemsRevision));
-    final items = notifier.allItems;
+    final items = notifier.allItems.where((item) => notifier.isItemSyncable(item)).toList();
 
     if (state.sourcePath == null || state.targetPath == null) {
       return _buildPlaceholder('Select both folders to see differences', LucideIcons.search);
@@ -106,7 +106,7 @@ class DiffList extends ConsumerWidget {
               final item = items[index];
               return _DiffItemTile(
                 item: item,
-                onChanged: (_) => notifier.toggleItemSelection(index),
+                onChanged: (_) => notifier.toggleItemSelectionByPath(item.relativePath, !item.isSelected),
               );
             },
           ),
@@ -162,21 +162,22 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _DiffItemTile extends StatefulWidget {
+class _DiffItemTile extends ConsumerStatefulWidget {
   final SyncItem item;
   final ValueChanged<bool?> onChanged;
 
   const _DiffItemTile({required this.item, required this.onChanged});
 
   @override
-  State<_DiffItemTile> createState() => _DiffItemTileState();
+  ConsumerState<_DiffItemTile> createState() => _DiffItemTileState();
 }
 
-class _DiffItemTileState extends State<_DiffItemTile> {
+class _DiffItemTileState extends ConsumerState<_DiffItemTile> {
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
+    final notifier = ref.read(syncProvider.notifier);
     final bool isMissingInSource = widget.item.status == FileStatus.missingInSource;
     final bool isDifferent = widget.item.status == FileStatus.different;
 
@@ -213,7 +214,7 @@ class _DiffItemTileState extends State<_DiffItemTile> {
           ),
         ),
         child: InkWell(
-          onTap: () => widget.onChanged(!widget.item.isSelected),
+          onTap: notifier.isItemSyncable(widget.item) ? () => widget.onChanged(!widget.item.isSelected) : null,
           borderRadius: BorderRadius.circular(12),
           hoverColor: Colors.transparent,
           splashColor: statusColor.withValues(alpha: 0.1),

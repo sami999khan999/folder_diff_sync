@@ -207,8 +207,8 @@ class SyncState {
   }
 
   SyncState updateWithCounts(List<SyncItem> allItems) {
-    final diffFiles = allItems.where((e) => e.type == SyncType.file && _isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
-    final diffFolders = allItems.where((e) => e.type == SyncType.directory && _isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
+    final diffFiles = allItems.where((e) => e.type == SyncType.file && isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
+    final diffFolders = allItems.where((e) => e.type == SyncType.directory && isItemSyncable(e, isTwoWay: isTwoWaySync)).toList();
     final selectedFiles = allItems.where((e) => e.isSelected && e.type == SyncType.file).toList();
     final selectedFolders = allItems.where((e) => e.isSelected && e.type == SyncType.directory).toList();
     
@@ -221,7 +221,7 @@ class SyncState {
     );
   }
 
-  bool _isItemSyncable(SyncItem item, {required bool isTwoWay}) {
+  bool isItemSyncable(SyncItem item, {required bool isTwoWay}) {
     if (isTwoWay) {
       return item.status != FileStatus.identical;
     } else {
@@ -317,6 +317,7 @@ class SyncNotifier extends Notifier<SyncState> {
       final prefix = '$relativePath${Platform.pathSeparator}';
       for (final item in _allItems) {
         if (item.relativePath == relativePath || item.relativePath.startsWith(prefix)) {
+          if (selected && !isItemSyncable(item)) continue;
           item.isSelected = selected;
         }
       }
@@ -346,6 +347,10 @@ class SyncNotifier extends Notifier<SyncState> {
     if (query.isEmpty) {
       // 1. Update all items in the flat list
       for (var item in _allItems) {
+        if (selected && !isItemSyncable(item)) {
+          item.isSelected = false; // Just in case, though it should already be false
+          continue;
+        }
         item.isSelected = selected;
       }
 
@@ -648,7 +653,7 @@ class SyncNotifier extends Notifier<SyncState> {
           _scannedPaths.add(lookupPath);
 
           // Selection inheritance: check if any ancestor is selected and item is syncable
-          if (_shouldAutoSelect(item.relativePath) && _isItemSyncable(item)) {
+          if (_shouldAutoSelect(item.relativePath) && isItemSyncable(item)) {
             item.isSelected = true;
           }
 
@@ -744,8 +749,8 @@ class SyncNotifier extends Notifier<SyncState> {
     return false;
   }
 
-  bool _isItemSyncable(SyncItem item) {
-    return state._isItemSyncable(item, isTwoWay: state.isTwoWaySync);
+  bool isItemSyncable(SyncItem item) {
+    return state.isItemSyncable(item, isTwoWay: state.isTwoWaySync);
   }
 
 
@@ -854,7 +859,7 @@ class SyncNotifier extends Notifier<SyncState> {
     if (state.isSyncing) return;
     if (index >= 0 && index < _allItems.length) {
       final item = _allItems[index];
-      if (!item.isSelected && !_isItemSyncable(item)) return; // Prevent selection of identicals
+      if (!item.isSelected && !isItemSyncable(item)) return; // Prevent selection of identicals
       item.isSelected = !item.isSelected;
 
       state = state.copyWith(
@@ -895,15 +900,24 @@ class SyncNotifier extends Notifier<SyncState> {
     // 1. Update ALL items in the flat list that match this node or are descendants
     for (final item in _allItems) {
       if (item.relativePath == node.relativePath || item.relativePath.startsWith(prefix)) {
+        if (selected && !isItemSyncable(item)) {
+          item.isSelected = false; // Deselect if not syncable
+          continue;
+        }
         item.isSelected = selected;
       }
     }
 
     // 2. Recursively update all tree nodes
     void updateTreeRecursive(SyncTreeNode n) {
-      n.isSelected = selected;
-      if (n.item != null) {
-        n.item!.isSelected = selected;
+      if (selected && n.item != null && !isItemSyncable(n.item!)) {
+        n.isSelected = false;
+        n.item!.isSelected = false;
+      } else {
+        n.isSelected = selected;
+        if (n.item != null) {
+          n.item!.isSelected = selected;
+        }
       }
       for (var child in n.children) {
         updateTreeRecursive(child);
@@ -963,7 +977,7 @@ class SyncNotifier extends Notifier<SyncState> {
   Future<void> sync() async {
     if (_allItems.isEmpty) return;
 
-    final itemsToSync = _allItems.where((e) => e.isSelected).toList();
+    final itemsToSync = _allItems.where((e) => e.isSelected && isItemSyncable(e)).toList();
     if (itemsToSync.isEmpty) return;
 
     int totalBytes = 0;

@@ -11,6 +11,7 @@ import 'widgets/folder_selector.dart';
 import 'widgets/glass_card.dart';
 import 'widgets/env_sync_view.dart';
 import 'widgets/sync_tree_view.dart';
+import 'widgets/custom_title_bar.dart';
 import 'services/tray_service.dart';
 
 import 'package:multi_split_view/multi_split_view.dart';
@@ -18,6 +19,18 @@ import 'package:multi_split_view/multi_split_view.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
+
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(1280, 800),
+    center: true,
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.hidden,
+  );
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
 
   final container = ProviderContainer();
   final trayService = TrayService(container);
@@ -79,17 +92,24 @@ class MainNavigator extends ConsumerWidget {
             colors: [Color(0xFF14142B), Color(0xFF0F0F0F), Color(0xFF050505)],
           ),
         ),
-        child: AnimatedSwitcher(
-          duration: 600.ms,
-          switchInCurve: Curves.easeInOutCubic,
-          switchOutCurve: Curves.easeInOutCubic,
-          child: mode == AppMode.selection
-              ? const SelectionScreen()
-              : mode == AppMode.folderSync
-              ? const FolderSyncView()
-              : mode == AppMode.fileContentSync
-              ? const FileContentSyncScreen()
-              : const EnvSyncView(),
+        child: Column(
+          children: [
+            const CustomTitleBar(),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: 600.ms,
+                switchInCurve: Curves.easeInOutCubic,
+                switchOutCurve: Curves.easeInOutCubic,
+                child: mode == AppMode.selection
+                    ? const SelectionScreen()
+                    : mode == AppMode.folderSync
+                    ? const FolderSyncView()
+                    : mode == AppMode.fileContentSync
+                    ? const FileContentSyncScreen()
+                    : const EnvSyncView(),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -293,36 +313,34 @@ class FolderSyncView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: MultiSplitViewTheme(
-          data: MultiSplitViewThemeData(
-            dividerThickness: 4,
-            dividerPainter: DividerPainter(
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              highlightedBackgroundColor: Colors.blueAccent.withValues(
-                alpha: 0.3,
-              ),
+      body: MultiSplitViewTheme(
+        data: MultiSplitViewThemeData(
+          dividerThickness: 4,
+          dividerPainter: DividerPainter(
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
+            highlightedBackgroundColor: Colors.blueAccent.withValues(
+              alpha: 0.3,
             ),
           ),
-          child: MultiSplitView(
-            initialAreas: [
-              Area(
-                flex: 0.25,
-                min: 0.15,
-                builder: (context, area) => const _LeftSidebar(),
-              ),
-              Area(
-                flex: 0.5,
-                min: 0.3,
-                builder: (context, area) => const _MiddleSection(),
-              ),
-              Area(
-                flex: 0.25,
-                min: 0.15,
-                builder: (context, area) => const _RightSidebar(),
-              ),
-            ],
-          ),
+        ),
+        child: MultiSplitView(
+          initialAreas: [
+            Area(
+              flex: 0.25,
+              min: 0.15,
+              builder: (context, area) => const _LeftSidebar(),
+            ),
+            Area(
+              flex: 0.5,
+              min: 0.3,
+              builder: (context, area) => const _MiddleSection(),
+            ),
+            Area(
+              flex: 0.25,
+              min: 0.15,
+              builder: (context, area) => const _RightSidebar(),
+            ),
+          ],
         ),
       ),
     );
@@ -2004,65 +2022,63 @@ class FileContentSyncScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final syncNotifier = ref.read(syncProvider.notifier);
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => syncNotifier.setMode(AppMode.selection),
-                  icon: const Icon(LucideIcons.arrowLeft),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.05),
-                    padding: const EdgeInsets.all(12),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'File Content Sync',
-                      style: TextStyle(
-                        fontFamily: 'Fredoka',
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    Text(
-                      'Choose a file sync tool',
-                      style: TextStyle(
-                        fontFamily: 'Fredoka',
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ).animate().fadeIn(),
-            const SizedBox(height: 48),
-            Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 500),
-                  child: ModeCard(
-                    title: 'Env File Sync',
-                    description:
-                        'Generate .env templates, strip values for sharing, and manage environment configuration files.',
-                    icon: LucideIcons.fileCode,
-                    color: Colors.greenAccent,
-                    onTap: () => syncNotifier.setMode(AppMode.envSync),
-                  ).animate().fadeIn(delay: 200.ms).scale(),
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => syncNotifier.setMode(AppMode.selection),
+                icon: const Icon(LucideIcons.arrowLeft),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  padding: const EdgeInsets.all(12),
                 ),
               ),
+              const SizedBox(width: 16),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   Text(
+                    'File Content Sync',
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  Text(
+                    'Choose a file sync tool',
+                    style: TextStyle(
+                      fontFamily: 'Fredoka',
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ).animate().fadeIn(),
+          const SizedBox(height: 48),
+          Expanded(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: ModeCard(
+                  title: 'Env File Sync',
+                  description:
+                      'Generate .env templates, strip values for sharing, and manage environment configuration files.',
+                  icon: LucideIcons.fileCode,
+                  color: Colors.greenAccent,
+                  onTap: () => syncNotifier.setMode(AppMode.envSync),
+                ).animate().fadeIn(delay: 200.ms).scale(),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

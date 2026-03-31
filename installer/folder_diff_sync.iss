@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Folder Diff Sync"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Sami Khan"
 #define MyAppURL "https://github.com/sami999khan999/folder_diff_sync"
 #define MyAppExeName "folder_diff_sync.exe"

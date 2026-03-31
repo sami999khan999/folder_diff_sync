@@ -32,37 +32,35 @@ class _EnvSyncViewState extends ConsumerState<EnvSyncView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: MultiSplitViewTheme(
-          data: MultiSplitViewThemeData(
-            dividerThickness: 4,
-            dividerPainter: DividerPainter(
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              highlightedBackgroundColor: Colors.greenAccent.withValues(
-                alpha: 0.3,
-              ),
+      body: MultiSplitViewTheme(
+        data: MultiSplitViewThemeData(
+          dividerThickness: 4,
+          dividerPainter: DividerPainter(
+            backgroundColor: Colors.white.withValues(alpha: 0.05),
+            highlightedBackgroundColor: Colors.greenAccent.withValues(
+              alpha: 0.3,
             ),
           ),
-          child: MultiSplitView(
-            initialAreas: [
-              Area(
-                flex: 0.25,
-                min: 0.20,
-                builder: (context, area) =>
-                    _LeftSidebar(fileNameController: _fileNameController),
-              ),
-              Area(
-                flex: 0.5,
-                min: 0.4,
-                builder: (context, area) => const _MiddleSection(),
-              ),
-              Area(
-                flex: 0.25,
-                min: 0.20,
-                builder: (context, area) => const _RightSidebar(),
-              ),
-            ],
-          ),
+        ),
+        child: MultiSplitView(
+          initialAreas: [
+            Area(
+              flex: 0.25,
+              min: 0.20,
+              builder: (context, area) =>
+                  _LeftSidebar(fileNameController: _fileNameController),
+            ),
+            Area(
+              flex: 0.5,
+              min: 0.4,
+              builder: (context, area) => const _MiddleSection(),
+            ),
+            Area(
+              flex: 0.25,
+              min: 0.20,
+              builder: (context, area) => const _RightSidebar(),
+            ),
+          ],
         ),
       ),
     );
